@@ -1,0 +1,38 @@
+description: >-
+  Remote connection to a satellite instance - client (aka controller) side.
+config:
+  hostname:
+    description: The remote agent's hostname to connect to.
+    type: string
+  port:
+    description: The remote agent's port number to connect to.
+    type: integer
+    minimum: 1
+    maximum: 65535
+    default: 4129
+provides:
+  auth_token_provider:
+    interface: auth_token_provider
+    description: This interface can provide tokens for AutoCharge or Plug and Charge.
+  energy:
+    interface: energy
+    description: This is the energy interface, providing an energy leaf in the energy supply tree.
+  evse_manager:
+    interface: evse_manager
+    description: This interface controls the charging port.
+  system:
+    interface: system
+    description: This interface provides a proxied system interface.
+requires:
+  auth:
+    interface: auth
+    min_connections: 1
+    max_connections: 1
+  system:
+    interface: system
+    min_connections: 0
+    max_connections: 1
+metadata:
+  license: https://opensource.org/license/gpl-3-0
+  authors:
+    - Michael Heimpold

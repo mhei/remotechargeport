@@ -1,0 +1,39 @@
+description: >-
+  Remote connection to a satellite instance - server (aka agent) side.
+config:
+  port:
+    description: The agent's port number.
+    type: integer
+    minimum: 1
+    maximum: 65535
+    default: 4129
+provides:
+  auth:
+    interface: auth
+    description: Proxied auth interface.
+  system:
+    interface: system
+    description: >-
+      Looped back system interface of overall system - not functional, only
+      for status variables.
+requires:
+  auth_token_provider:
+    interface: auth_token_provider
+    min_connections: 0
+    max_connections: 1
+  energy:
+    interface: energy
+    min_connections: 1
+    max_connections: 1
+  evse_manager:
+    interface: evse_manager
+    min_connections: 1
+    max_connections: 1
+  system:
+    interface: system
+    min_connections: 0
+    max_connections: 1
+metadata:
+  license: https://opensource.org/license/gpl-3-0
+  authors:
+    - Michael Heimpold

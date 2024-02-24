@@ -1,0 +1,3 @@
+ev_add_cpp_module(SatelliteAgent)
+ev_add_cpp_module(SatelliteController)
+ev_add_cpp_module(SystemAggregator)
