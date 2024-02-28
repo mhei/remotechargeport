@@ -1,5 +1,15 @@
 description: >-
   Aggregates multiple system interface into a single one.
+config:
+  upload_url_template:
+    description: >-
+      The URL template for the satellites to upload to when uploading diagnostics.
+      The string must contain <my-ip> which is replaced with the actual IP address
+      of the system the SystemAggregator is running on.
+      Usually, the URL should end with a trailing slash to indicate that it is a
+      directory where to place the uploaded file.
+    type: string
+    default: "ftp://{my-ip}:2121/"
 provides:
   system:
     interface: system
@@ -9,6 +19,10 @@ requires:
     interface: system
     min_connections: 2
     max_connections: 4
+  satellite:
+    interface: satellite
+    min_connections: 1
+    max_connections: 3
 metadata:
   license: https://opensource.org/license/gpl-3-0
   authors:

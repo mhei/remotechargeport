@@ -14,29 +14,53 @@
 #include <generated/interfaces/system/Implementation.hpp>
 
 // headers for required interface implementations
+#include <generated/interfaces/satellite/Interface.hpp>
 #include <generated/interfaces/system/Interface.hpp>
 
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 // insert your custom include headers here
+#include <condition_variable>
+#include <cstdint>
+#include <map>
+#include <mutex>
+#include "systemaggregator_upload_log_request.hpp"
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 
 namespace module {
 
-struct Conf {};
+struct Conf {
+    std::string upload_url_template;
+};
 
 class SystemAggregator : public Everest::ModuleBase {
 public:
     SystemAggregator() = delete;
     SystemAggregator(const ModuleInfo& info, std::unique_ptr<systemImplBase> p_system,
-                     std::vector<std::unique_ptr<systemIntf>> r_system, Conf& config) :
-        ModuleBase(info), p_system(std::move(p_system)), r_system(std::move(r_system)), config(config){};
+                     std::vector<std::unique_ptr<systemIntf>> r_system,
+                     std::vector<std::unique_ptr<satelliteIntf>> r_satellite, Conf& config) :
+        ModuleBase(info),
+        p_system(std::move(p_system)),
+        r_system(std::move(r_system)),
+        r_satellite(std::move(r_satellite)),
+        config(config){};
 
     const std::unique_ptr<systemImplBase> p_system;
     const std::vector<std::unique_ptr<systemIntf>> r_system;
+    const std::vector<std::unique_ptr<satelliteIntf>> r_satellite;
     const Conf& config;
 
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
     // insert your public definitions here
+
+    // maps for all ongoing log upload requests
+    std::map<int32_t, systemaggregator_upload_log_request> log_uploads;
+    std::map<std::string, int32_t> type_to_log_uploads_map;
+
+    // condition variable signaling updated log status
+    std::condition_variable cv_log_status;
+
+    // mutex to protect the maps and cv
+    std::mutex lock_log_status;
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
 
 protected:
