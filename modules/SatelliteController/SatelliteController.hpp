@@ -14,6 +14,7 @@
 #include <generated/interfaces/auth_token_provider/Implementation.hpp>
 #include <generated/interfaces/energy/Implementation.hpp>
 #include <generated/interfaces/evse_manager/Implementation.hpp>
+#include <generated/interfaces/satellite/Implementation.hpp>
 #include <generated/interfaces/system/Implementation.hpp>
 
 // headers for required interface implementations
@@ -39,12 +40,14 @@ public:
     SatelliteController() = delete;
     SatelliteController(const ModuleInfo& info, std::unique_ptr<auth_token_providerImplBase> p_auth_token_provider,
                         std::unique_ptr<energyImplBase> p_energy, std::unique_ptr<evse_managerImplBase> p_evse_manager,
-                        std::unique_ptr<systemImplBase> p_system, std::unique_ptr<authIntf> r_auth,
-                        std::vector<std::unique_ptr<systemIntf>> r_system, Conf& config) :
+                        std::unique_ptr<satelliteImplBase> p_satellite, std::unique_ptr<systemImplBase> p_system,
+                        std::unique_ptr<authIntf> r_auth, std::vector<std::unique_ptr<systemIntf>> r_system,
+                        Conf& config) :
         ModuleBase(info),
         p_auth_token_provider(std::move(p_auth_token_provider)),
         p_energy(std::move(p_energy)),
         p_evse_manager(std::move(p_evse_manager)),
+        p_satellite(std::move(p_satellite)),
         p_system(std::move(p_system)),
         r_auth(std::move(r_auth)),
         r_system(std::move(r_system)),
@@ -53,6 +56,7 @@ public:
     const std::unique_ptr<auth_token_providerImplBase> p_auth_token_provider;
     const std::unique_ptr<energyImplBase> p_energy;
     const std::unique_ptr<evse_managerImplBase> p_evse_manager;
+    const std::unique_ptr<satelliteImplBase> p_satellite;
     const std::unique_ptr<systemImplBase> p_system;
     const std::unique_ptr<authIntf> r_auth;
     const std::vector<std::unique_ptr<systemIntf>> r_system;

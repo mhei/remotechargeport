@@ -20,6 +20,9 @@ provides:
   evse_manager:
     interface: evse_manager
     description: This interface controls the charging port.
+  satellite:
+    interface: satellite
+    description: This interface provides information/control for the satellite connection.
   system:
     interface: system
     description: This interface provides a proxied system interface.

@@ -16,6 +16,7 @@ target_sources(${MODULE_NAME}
         "auth_token_provider/auth_token_providerImpl.cpp"
         "energy/energyImpl.cpp"
         "evse_manager/evse_managerImpl.cpp"
+        "satellite/satelliteImpl.cpp"
         "system/systemImpl.cpp"
 )
 
