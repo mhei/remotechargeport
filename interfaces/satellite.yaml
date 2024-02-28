@@ -1,0 +1,17 @@
+description: Obtain and control a satellite connection
+cmds:
+  get_local_endpoint_address:
+    description: This command queries the local IP address used for the satellite connection.
+    result:
+      description: The local IP address of the connection.
+      type: string
+  get_remote_endpoint_address:
+    description: This command queries the remote IP address used for the satellite connection.
+    result:
+      description: The remote IP address of the connection.
+      type: string
+  is_connected:
+    description: Check whether the satellite connection is established.
+    result:
+      description: True if connected, else otherwise.
+      type: boolean
