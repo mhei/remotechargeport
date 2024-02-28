@@ -18,4 +18,10 @@ target_sources(${MODULE_NAME}
 
 # ev@c55432ab-152c-45a9-9d2e-7281d50c69c3:v1
 # insert other things like install cmds etc here
+
+install(
+    PROGRAMS
+        logs_upload_helper.sh
+    DESTINATION "${EVEREST_MODULE_INSTALL_PREFIX}/${MODULE_NAME}"
+)
 # ev@c55432ab-152c-45a9-9d2e-7281d50c69c3:v1

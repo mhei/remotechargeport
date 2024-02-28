@@ -14,6 +14,7 @@
 
 // ev@75ac1216-19eb-4182-a85c-820f1fc2c091:v1
 // insert your custom include headers here
+#include <cstdint>
 // ev@75ac1216-19eb-4182-a85c-820f1fc2c091:v1
 
 namespace module {
@@ -45,6 +46,12 @@ protected:
 
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
     // insert your protected definitions here
+
+    // create a random request id for internal use
+    int32_t create_random_request_id();
+
+    // create a reasonable filename for the file to upload
+    std::string create_logs_filename(std::string type);
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
 
 private:
