@@ -25,6 +25,7 @@ if(NOT DISABLE_EDM)
     evc_setup_edm()
 else()
     find_package(everest-core REQUIRED)
+    find_package(everest-framework REQUIRED)
 endif()
 
 ev_add_project()

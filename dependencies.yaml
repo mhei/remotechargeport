@@ -2,3 +2,7 @@
 everest-core:
   git: https://github.com/EVerest/everest-core.git
   git_tag: main
+everest-framework:
+  git: https://github.com/EVerest/everest-framework.git
+  git_tag: main
+  options: ["BUILD_TESTING OFF"]
