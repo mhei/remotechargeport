@@ -132,6 +132,8 @@ void SatelliteAgent::init() {
         if (this->r_system.empty())
             return;
 
+        EVLOG_info << "Got reset request: " << type << " reset (" << (scheduled ? "" : "not ") << "scheduled).";
+
         this->r_system[0]->call_reset(types::system::string_to_reset_type(type), scheduled);
     });
 
