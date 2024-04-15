@@ -16,5 +16,9 @@ void authImpl::handle_set_connection_timeout(int& connection_timeout) {
     // your code for cmd set_connection_timeout goes here
 }
 
+void authImpl::handle_set_master_pass_group_id(std::string& master_pass_group_id) {
+    // your code for cmd set_master_pass_group_id goes here
+}
+
 } // namespace auth
 } // namespace module
