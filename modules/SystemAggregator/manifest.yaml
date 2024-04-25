@@ -1,6 +1,18 @@
 description: >-
   Aggregates multiple system interface into a single one.
 config:
+  default_retries:
+    description: Specifies how many times the Charge Point retries to upload or download files on previous failure.
+    type: integer
+    minimum: 0
+    maximum: 5
+    default: 0
+  default_retry_interval:
+    description: Specifies in seconds after which time a retry of an upload or download on previous failure may be attempted.
+    type: integer
+    minimum: 0
+    maximum: 3600
+    default: 180
   upload_url_template:
     description: >-
       The URL template for the satellites to upload to when uploading diagnostics.
@@ -10,6 +22,16 @@ config:
       directory where to place the uploaded file.
     type: string
     default: "ftp://{my-ip}:2121/"
+  incoming_uploads_dir:
+    description: The directory where incoming uploads are expected.
+    type: string
+    default: /srv/diagnostics-incoming
+  incoming_upload_timeout:
+    description: Specifies in seconds, how long we wait at max for incoming uploads.
+    type: integer
+    minimum: 30
+    maximum: 600
+    default: 120
 provides:
   system:
     interface: system

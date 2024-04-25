@@ -47,7 +47,11 @@ protected:
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
     // insert your protected definitions here
 
+    // create a random request id for internal use
     int32_t create_random_request_id();
+
+    // create a reasonable filename for the file to upload
+    std::string create_logs_filename(std::string type);
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
 
 private:

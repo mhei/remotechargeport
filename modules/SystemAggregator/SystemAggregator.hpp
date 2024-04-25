@@ -19,17 +19,21 @@
 
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 // insert your custom include headers here
+#include "systemaggregator_upload_log_request.hpp"
 #include <condition_variable>
 #include <cstdint>
 #include <map>
 #include <mutex>
-#include "systemaggregator_upload_log_request.hpp"
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 
 namespace module {
 
 struct Conf {
+    int default_retries;
+    int default_retry_interval;
     std::string upload_url_template;
+    std::string incoming_uploads_dir;
+    int incoming_upload_timeout;
 };
 
 class SystemAggregator : public Everest::ModuleBase {

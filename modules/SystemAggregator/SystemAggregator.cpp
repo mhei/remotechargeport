@@ -12,8 +12,8 @@ void SystemAggregator::init() {
         this->r_system[i]->subscribe_log_status([this, i](types::system::LogStatus log_status) {
             bool wakeup{false};
 
-            EVLOG_info << (i == 0 ? "Local system" : "Satellite #" + std::to_string(i))
-                       << " reported LogStatus: " << log_status.log_status;
+            EVLOG_info << "System #" << i << " reported LogStatus: " << log_status.log_status
+                       << " (" << log_status.request_id << ")";
 
             // Idle and Uploading are not relevant
             if (log_status.log_status == types::system::LogStatusEnum::Uploading ||
@@ -34,6 +34,7 @@ void SystemAggregator::init() {
 
             // in case of negative feedback we can drop the expected filename
             if (log_status.log_status != types::system::LogStatusEnum::Uploaded) {
+                EVLOG_debug << "System #" << i << ": dropping filename due to reported error.";
                 this->log_uploads[log_status.request_id].incoming_filenames[i] = "";
             }
 
@@ -42,6 +43,7 @@ void SystemAggregator::init() {
 
             // if the upload is not running anymore, we can delete the object
             if (!this->log_uploads[log_status.request_id].is_running) {
+                EVLOG_debug << "System #" << i << ": not running anymore, cleaning up.";
                 this->log_uploads.erase(log_status.request_id);
             }
 
