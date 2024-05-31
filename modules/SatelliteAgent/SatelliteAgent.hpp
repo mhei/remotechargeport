@@ -23,6 +23,7 @@
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 // insert your custom include headers here
 #include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -80,12 +81,28 @@ private:
 
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
     // insert your private definitions here
-    std::atomic_bool initial_connect{false};
+    bool i_am_here_seen{false};
+    std::condition_variable cv_i_am_here_seen;
+    std::mutex lock_i_am_here_seen;
+
+    bool i_am_ready_seen{false};
+    std::condition_variable cv_i_am_ready_seen;
+    std::mutex lock_i_am_ready_seen;
+
+    bool i_am_ready_myself{false};
+    std::condition_variable cv_i_am_ready_myself;
+    std::mutex lock_i_am_ready_myself;
 
     json event_list;
+    bool event_list_size_warned{false};
+    std::condition_variable cv_retrieve_vars_seen;
     std::mutex event_list_guard;
 
+    std::atomic_bool disconnect_expected{false};
+
     void add_to_event_list(std::string interface, std::string var, json value);
+    void init_rpc_binds();
+    void trigger_reset();
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
 };
 
