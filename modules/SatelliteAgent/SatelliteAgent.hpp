@@ -80,12 +80,15 @@ private:
 
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
     // insert your private definitions here
-    std::atomic_bool initial_connect{false};
+    std::atomic_bool i_am_here_seen{false};
+    std::atomic_bool i_am_ready_seen{false};
+    std::atomic_bool i_am_ready_myself{false};
 
     json event_list;
     std::mutex event_list_guard;
 
     void add_to_event_list(std::string interface, std::string var, json value);
+    void init_rpc_binds();
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
 };
 

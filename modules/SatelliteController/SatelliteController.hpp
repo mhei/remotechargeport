@@ -26,6 +26,9 @@
 #include <atomic>
 #include <memory>
 #include <rpc/client.h>
+#if 0
+#include <rpc/msgpack.hpp>
+#endif
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 
 namespace module {
@@ -69,6 +72,13 @@ public:
     std::unique_ptr<rpc::client> rpc;
 
     std::atomic_bool disconnect_expected{false};
+
+#if 0
+    //! \brief Helper to pass calls to RPC client's call method.
+    template <typename... Args>
+    RPCLIB_MSGPACK::object_handle call(std::string const &func_name, Args... args);
+#endif
+
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
 
 protected:

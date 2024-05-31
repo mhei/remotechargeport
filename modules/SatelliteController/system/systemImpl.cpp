@@ -52,6 +52,11 @@ void systemImpl::handle_reset(types::system::ResetType& type, bool& scheduled) {
     this->mod->disconnect_expected = true;
 
     this->mod->rpc->call("sytem_reset", value, scheduled);
+
+    // set a new timeout for synchronous callbacks to 10s to prevent any
+    // new incoming calls to raise a timeout exception
+    // it is assumed that we locally do a reset on our own within this time
+    //this->mod-rpc->set_timeout(10 * 1000 /* ms */);
 }
 
 bool systemImpl::handle_set_system_time(std::string& timestamp) {

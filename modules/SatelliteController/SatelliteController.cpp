@@ -7,6 +7,7 @@
 #include <chrono>
 #include "SatelliteController.hpp"
 #include <rpc/client.h>
+#include <rpc/msgpack.hpp>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -15,8 +16,23 @@ using namespace std::chrono_literals;
 namespace module {
 
 SatelliteController::~SatelliteController() {
-    this->rpc->call("exit");
+    // if still connected, tell the peer that we are quitting now
+    if (this->rpc->get_connection_state() == rpc::client::connection_state::connected)
+        this->rpc->call("exit");
 }
+
+#if 0
+template <typename... Args>
+RPCLIB_MSGPACK::object_handle SatelliteController::call(std::string const &func_name, Args... args) {
+    // forward the call only if we
+
+    if (!rpc->get_connection_state() == rpc::client::connection_state::connected)
+        for (;;)
+            ;
+
+    return rpc->call(func_name, std::forward<Args>(args)...);
+}
+#endif
 
 void SatelliteController::init() {
     invoke_init(*p_auth_token_provider);
@@ -24,8 +40,11 @@ void SatelliteController::init() {
     invoke_init(*p_evse_manager);
     invoke_init(*p_system);
 
-    this->rpc = std::make_unique<rpc::client>(this->config.hostname, this->config.port);
-
+    //
+    // register all callbacks for our desired interfaces
+    // note: the callbacks are supposed to be not called yet since we are still in init phase;
+    //       otherwise dereferencing of rpc would occur are we would crash
+    //
     this->r_auth->subscribe_token_validation_status([&](types::authorization::TokenValidationStatusMessage value) {
         json j = json::object({ {"interface", "auth"},
                                 {"var", "token_validation_status"},
@@ -49,6 +68,18 @@ void SatelliteController::init() {
         });
     }
 
+    //
+    // we need a two step approach here to handle cases when satellite and ourself lost synchronization
+    //
+    do {
+        // assigning this variable should call the destructor of previous instance if already set -> closes connection
+        this->rpc = std::make_unique<rpc::client>(this->config.hostname, this->config.port);
+
+        // the 'i_am_here' call returns true in case the peer has seen us before (and is not in boot-up sync phase anymore)
+    } while (this->rpc->call("i_am_here").as<bool>());
+
+    // once 'i_am_here' returned, we are allowed to call all other RPC callbacks as well
+    // let's move from 'init' phase to 'ready' simultaneously with peer
     this->rpc->call("i_am_ready");
 }
 
@@ -112,6 +143,7 @@ void SatelliteController::ready() {
     EVLOG_info << "Connection to remote agent lost. Terminating...";
 
     if (not this->disconnect_expected) {
+        EVLOG_warning << "...and since this was not expected, we terminate the whole EVerest.";
         std::exit(0);
     }
 }

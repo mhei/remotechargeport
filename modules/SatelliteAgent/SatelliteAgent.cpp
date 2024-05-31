@@ -6,6 +6,8 @@
 #include <thread>
 #include "SatelliteAgent.hpp"
 #include <rpc/server.h>
+#include <rpc/this_server.h>
+#include <rpc/this_session.h>
 #include <nlohmann/json.hpp>
 
 using nlohmann::json;
@@ -17,7 +19,154 @@ void SatelliteAgent::init() {
 
     this->event_list = json::array();
 
+    //
+    // register all callbacks for our desired variables
+    //
+    if (not this->r_auth_token_provider.empty()) {
+        this->r_auth_token_provider[0]->subscribe_provided_token([&](types::authorization::ProvidedIdToken value) {
+            this->add_to_event_list("auth_token_provider", "provided_token", value);
+        });
+    }
+
+    this->r_energy->subscribe_energy_flow_request([&](types::energy::EnergyFlowRequest value) {
+        this->add_to_event_list("energy", "energy_flow_request", value);
+    });
+
+    this->r_evse_manager->subscribe_session_event([&](types::evse_manager::SessionEvent value) {
+        this->add_to_event_list("evse_manager", "session_event", value);
+    });
+
+    this->r_evse_manager->subscribe_limits([&](types::evse_manager::Limits value) {
+        this->add_to_event_list("evse_manager", "limits", value);
+    });
+
+    this->r_evse_manager->subscribe_ev_info([&](types::evse_manager::EVInfo value) {
+        this->add_to_event_list("evse_manager", "ev_info", value);
+    });
+
+    this->r_evse_manager->subscribe_car_manufacturer([&](types::evse_manager::CarManufacturer value) {
+        this->add_to_event_list("evse_manager", "car_manufacturer", types::evse_manager::car_manufacturer_to_string(value));
+    });
+
+    this->r_evse_manager->subscribe_telemetry([&](types::evse_board_support::Telemetry value) {
+        this->add_to_event_list("evse_manager", "telemetry", value);
+    });
+
+    this->r_evse_manager->subscribe_powermeter([&](types::powermeter::Powermeter value) {
+        this->add_to_event_list("evse_manager", "powermeter", value);
+    });
+
+    this->r_evse_manager->subscribe_evse_id([&](std::string value) {
+         this->add_to_event_list("evse_manager", "evse_id", value);
+    });
+
+    this->r_evse_manager->subscribe_hw_capabilities([&](types::evse_board_support::HardwareCapabilities value) {
+         this->add_to_event_list("evse_manager", "hw_capabilities", value);
+    });
+
+    this->r_evse_manager->subscribe_iso15118_certificate_request([&](types::iso15118_charger::Request_Exi_Stream_Schema value) {
+         this->add_to_event_list("evse_manager", "iso15118_certificate_request", value);
+    });
+
+    this->r_evse_manager->subscribe_enforced_limits([&](types::energy::EnforcedLimits value) {
+        this->add_to_event_list("evse_manager", "enforced_limits", value);
+    });
+
+    this->r_evse_manager->subscribe_waiting_for_external_ready([&](bool value) {
+        this->add_to_event_list("evse_manager", "waiting_for_external_ready", value);
+    });
+
+    this->r_evse_manager->subscribe_ready([&](bool value) {
+        this->add_to_event_list("evse_manager", "ready", value);
+    });
+
+    this->r_evse_manager->subscribe_selected_protocol([&](std::string value) {
+        this->add_to_event_list("evse_manager", "selected_protocol", value);
+    });
+
+    if (not this->r_system.empty()) {
+        this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
+            this->add_to_event_list("system", "firmware_update_status", value);
+        });
+
+        this->r_system[0]->subscribe_log_status([&](types::system::LogStatus value) {
+            this->add_to_event_list("system", "log_status", value);
+        });
+    }
+
+    //
+    // create RPC server
+    //
     this->rpc = std::make_unique<rpc::server>(this->config.port);
+
+    // at this point we only register the callbacks for communication between SatelliteController and SatelliteAgent
+    this->rpc->bind("i_am_here", [&]() {
+        bool rv{this->i_am_here_seen};
+
+        if (!this->i_am_here_seen) {
+            EVLOG_info << "Connection to remote controller established.";
+            this->i_am_here_seen = true;
+        } else {
+            EVLOG_error << "Connection to remote controller re-established unexpectedly.";
+
+            // gracefully shutdown the session and the server now to prevent re-connects
+            rpc::this_session().post_exit();
+            rpc::this_server().stop();
+        }
+
+        // we return true in case we've seen a remote controller before
+        return rv;
+    });
+
+    this->rpc->bind("i_am_ready", [&]() {
+        if (!this->i_am_ready_seen) {
+            EVLOG_info << "Remote controller signaled readiness, let's startup...";
+            this->i_am_ready_seen = true;
+        } else {
+            EVLOG_warning << "Remote controller signaled readiness multiple times, ignored.";
+        }
+
+        // wait until we registered all callbacks
+        while (!this->i_am_ready_myself);
+    });
+
+    this->rpc->bind("exit", [&]() {
+        EVLOG_info << "Remote controller exited. Terminating too...";
+        std::exit(0);
+    });
+
+    this->rpc->async_run();
+
+    // we wait until the peer connected and plays our protocol before we register the
+    // real worker callbacks; this is to ensure that we cannot modify our internal state
+    // by accidentially receiving a callback while we are not synced yet
+    while (!this->i_am_here_seen);
+    this->init_rpc_binds();
+    this->i_am_ready_myself = true;
+
+    // sync with remote controller to go into ready state simultaneously
+    while (!this->i_am_ready_seen);
+}
+
+void SatelliteAgent::ready() {
+    invoke_ready(*p_auth);
+}
+
+void SatelliteAgent::add_to_event_list(std::string interface, std::string var, json value) {
+        std::scoped_lock lock(this->event_list_guard);
+
+        // random check to prevent growing endlessly
+        if (this->event_list.size() > 1000) {
+            EVLOG_info << "Event list size exceeded 1000 items. Skipping appending more.";
+            return;
+        }
+
+        json j = json::object({ {"interface", interface}, {"var", var}, {"value", value} });
+
+        this->event_list.insert(this->event_list.end(), j);
+}
+
+void SatelliteAgent::init_rpc_binds() {
 
     this->rpc->bind("energy_enforce_limits", [&](std::string& value) {
         this->r_energy->call_enforce_limits(json::parse(value));
@@ -135,6 +284,11 @@ void SatelliteAgent::init() {
         EVLOG_info << "Got reset request: " << type << " reset (" << (scheduled ? "" : "not ") << "scheduled).";
 
         this->r_system[0]->call_reset(types::system::string_to_reset_type(type), scheduled);
+
+        // gracefully shutdown the session and the server now to prevent re-connects
+        EVLOG_info << "Terminating RPC session and server now.";
+        rpc::this_session().post_exit();
+        rpc::this_server().stop();
     });
 
     this->rpc->bind("system_set_system_time", [&](std::string& timestamp) {
@@ -181,111 +335,6 @@ void SatelliteAgent::init() {
 
         return rv;
     });
-
-    if (not this->r_auth_token_provider.empty()) {
-        this->r_auth_token_provider[0]->subscribe_provided_token([&](types::authorization::ProvidedIdToken value) {
-            this->add_to_event_list("auth_token_provider", "provided_token", value);
-        });
-    }
-
-    this->r_energy->subscribe_energy_flow_request([&](types::energy::EnergyFlowRequest value) {
-        this->add_to_event_list("energy", "energy_flow_request", value);
-    });
-
-    this->r_evse_manager->subscribe_session_event([&](types::evse_manager::SessionEvent value) {
-        this->add_to_event_list("evse_manager", "session_event", value);
-    });
-
-    this->r_evse_manager->subscribe_limits([&](types::evse_manager::Limits value) {
-        this->add_to_event_list("evse_manager", "limits", value);
-    });
-
-    this->r_evse_manager->subscribe_ev_info([&](types::evse_manager::EVInfo value) {
-        this->add_to_event_list("evse_manager", "ev_info", value);
-    });
-
-    this->r_evse_manager->subscribe_car_manufacturer([&](types::evse_manager::CarManufacturer value) {
-        this->add_to_event_list("evse_manager", "car_manufacturer", types::evse_manager::car_manufacturer_to_string(value));
-    });
-
-    this->r_evse_manager->subscribe_telemetry([&](types::evse_board_support::Telemetry value) {
-        this->add_to_event_list("evse_manager", "telemetry", value);
-    });
-
-    this->r_evse_manager->subscribe_powermeter([&](types::powermeter::Powermeter value) {
-        this->add_to_event_list("evse_manager", "powermeter", value);
-    });
-
-    this->r_evse_manager->subscribe_evse_id([&](std::string value) {
-         this->add_to_event_list("evse_manager", "evse_id", value);
-    });
-
-    this->r_evse_manager->subscribe_hw_capabilities([&](types::evse_board_support::HardwareCapabilities value) {
-         this->add_to_event_list("evse_manager", "hw_capabilities", value);
-    });
-
-    this->r_evse_manager->subscribe_iso15118_certificate_request([&](types::iso15118_charger::Request_Exi_Stream_Schema value) {
-         this->add_to_event_list("evse_manager", "iso15118_certificate_request", value);
-    });
-
-    this->r_evse_manager->subscribe_enforced_limits([&](types::energy::EnforcedLimits value) {
-        this->add_to_event_list("evse_manager", "enforced_limits", value);
-    });
-
-    this->r_evse_manager->subscribe_waiting_for_external_ready([&](bool value) {
-        this->add_to_event_list("evse_manager", "waiting_for_external_ready", value);
-    });
-
-    this->r_evse_manager->subscribe_ready([&](bool value) {
-        this->add_to_event_list("evse_manager", "ready", value);
-    });
-
-    this->r_evse_manager->subscribe_selected_protocol([&](std::string value) {
-        this->add_to_event_list("evse_manager", "selected_protocol", value);
-    });
-
-    if (not this->r_system.empty()) {
-        this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
-            this->add_to_event_list("system", "firmware_update_status", value);
-        });
-
-        this->r_system[0]->subscribe_log_status([&](types::system::LogStatus value) {
-            this->add_to_event_list("system", "log_status", value);
-        });
-    }
-
-    this->rpc->bind("i_am_ready", [&]() {
-        EVLOG_info << "Connection to remote controller established.";
-        this->initial_connect = true;
-    });
-
-    this->rpc->bind("exit", [&]() {
-        EVLOG_info << "Remote controller exited. Terminating...";
-        std::exit(0);
-    });
-
-    this->rpc->async_run();
-
-    // initial sync with peer to go into ready state simultaneously
-    while (not this->initial_connect);
-}
-
-void SatelliteAgent::ready() {
-    invoke_ready(*p_auth);
-}
-
-void SatelliteAgent::add_to_event_list(std::string interface, std::string var, json value) {
-        std::scoped_lock lock(this->event_list_guard);
-
-        // random check to prevent growing endlessly
-        if (this->event_list.size() > 1000) {
-            EVLOG_info << "Event list size exceeded 1000 items. Skipping appending more.";
-            return;
-        }
-
-        json j = json::object({ {"interface", interface}, {"var", var}, {"value", value} });
-
-        this->event_list.insert(this->event_list.end(), j);
 }
 
 } // namespace module
