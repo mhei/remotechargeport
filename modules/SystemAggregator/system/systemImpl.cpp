@@ -29,6 +29,13 @@ void systemImpl::ready() {
 
 types::system::UpdateFirmwareResponse
 systemImpl::handle_update_firmware(types::system::FirmwareUpdateRequest& firmware_update_request) {
+    std::scoped_lock lock(this->mod->lock_fw_update_status);
+
+    // clear boths maps which remembered status of last operation
+    this->mod->fw_update_feedback_counter.clear();
+    this->mod->fw_update_already_reported.clear();
+    this->mod->fw_update_final_one_reported = false;
+
     std::vector<types::system::UpdateFirmwareResponse> rvs;
 
     for (auto& system : this->mod->r_system) {
