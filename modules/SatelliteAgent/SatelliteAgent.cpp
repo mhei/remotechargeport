@@ -244,12 +244,8 @@ void SatelliteAgent::init_rpc_binds() {
         return j.dump();
     });
 
-    this->rpc->bind("evse_manager_enable", [&](int& connector_id) {
-        return this->r_evse_manager->call_enable(connector_id);
-    });
-
-    this->rpc->bind("evse_manager_disable", [&](int& connector_id) {
-        return this->r_evse_manager->call_disable(connector_id);
+    this->rpc->bind("evse_manager_enable_disable", [&](int& connector_id, std::string& cmd_source) {
+        return this->r_evse_manager->call_enable_disable(connector_id, json::parse(cmd_source));
     });
 
     this->rpc->bind("evse_manager_authorize_response", [&](std::string& provided_token, std::string& validation_result) {
