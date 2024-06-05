@@ -21,12 +21,10 @@ types::evse_manager::Evse evse_managerImpl::handle_get_evse() {
     return j;
 }
 
-bool evse_managerImpl::handle_enable(int& connector_id) {
-    return this->mod->rpc->call("evse_manager_enable", connector_id).as<bool>();
-}
+bool evse_managerImpl::handle_enable_disable(int& connector_id, types::evse_manager::EnableDisableSource& cmd_source) {
+    json j = cmd_source;
 
-bool evse_managerImpl::handle_disable(int& connector_id) {
-    return this->mod->rpc->call("evse_manager_disable", connector_id).as<bool>();
+    return this->mod->rpc->call("evse_manager_enable_disable", connector_id, j.dump()).as<bool>();
 }
 
 void evse_managerImpl::handle_authorize_response(types::authorization::ProvidedIdToken& provided_token,
