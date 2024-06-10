@@ -73,6 +73,9 @@ std::string systemImpl::create_logs_filename(std::string type) {
     if (ts.find(".") != std::string::npos)
        ts = ts.substr(0, ts.find("."));
 
+    // add 'Z' suffix to indicate Zulu time
+    ts += "Z";
+
     return type + "_" + ts + ".tar.gz";
 }
 
