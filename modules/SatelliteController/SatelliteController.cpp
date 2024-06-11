@@ -30,7 +30,8 @@ void SatelliteController::init() {
     //
     // register all callbacks for our desired interfaces
     // note: the callbacks are supposed to be not called yet since we are still in init phase;
-    //       otherwise dereferencing of rpc would occur are we would crash
+    //       otherwise dereferencing of rpc would occur and we would crash
+    //       (per definition, rpc has to be set up and running once we go from 'init' to 'ready')
     //
     this->r_auth->subscribe_token_validation_status([&](types::authorization::TokenValidationStatusMessage value) {
         json j = json::object({ {"interface", "auth"},
@@ -39,6 +40,7 @@ void SatelliteController::init() {
         this->rpc->call("push_var", j.dump());
     });
 
+    // the manifest allows system to be not linked to a real module
     if (not this->r_system.empty()) {
         this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
             json j = json::object({ {"interface", "system"},
