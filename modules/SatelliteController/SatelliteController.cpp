@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright Pionix GmbH and Contributors to EVerest
+#include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <string>
 #include <thread>
-#include <chrono>
 #include "SatelliteController.hpp"
 #include <rpc/client.h>
+#include <rpc/rpc_error.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -15,7 +16,9 @@ using namespace std::chrono_literals;
 namespace module {
 
 SatelliteController::~SatelliteController() {
-    this->rpc->call("exit");
+    // if still connected, tell the peer that we are quitting now
+    if (this->rpc->get_connection_state() == rpc::client::connection_state::connected)
+        this->rpc->call("exit");
 }
 
 void SatelliteController::init() {
@@ -24,8 +27,12 @@ void SatelliteController::init() {
     invoke_init(*p_evse_manager);
     invoke_init(*p_system);
 
-    this->rpc = std::make_unique<rpc::client>(this->config.hostname, this->config.port);
-
+    //
+    // register all callbacks for our desired interfaces
+    // note: the callbacks are supposed to be not called yet since we are still in init phase;
+    //       otherwise dereferencing of rpc would occur and we would crash
+    //       (per definition, rpc has to be set up and running once we go from 'init' to 'ready')
+    //
     this->r_auth->subscribe_token_validation_status([&](types::authorization::TokenValidationStatusMessage value) {
         json j = json::object({ {"interface", "auth"},
                                 {"var", "token_validation_status"},
@@ -33,6 +40,7 @@ void SatelliteController::init() {
         this->rpc->call("push_var", j.dump());
     });
 
+    // the manifest allows system to be not linked to a real module
     if (not this->r_system.empty()) {
         this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
             json j = json::object({ {"interface", "system"},
@@ -49,7 +57,43 @@ void SatelliteController::init() {
         });
     }
 
+    //
+    // we need a two step approach here to handle cases when satellite and ourself lost synchronization
+    //
+    EVLOG_info << "Connecting to SatelliteAgent on " << this->config.hostname << ":" << this->config.port << "...";
+    bool i_am_here_rv{true};
+
+    do {
+        // assigning this variable should call the destructor of previous instance if already set -> closes connection
+        try {
+            this->rpc = std::make_unique<rpc::client>(this->config.hostname, this->config.port);
+
+            // then next RPC calls should not take longer than this timeout
+            std::chrono::milliseconds timeout{5s};
+            this->rpc->set_timeout(timeout.count()); /* takes [ms] as argument */
+
+            // the 'i_am_here' call returns true in case the peer has seen us before (and is not in boot-up sync phase anymore)
+            EVLOG_debug << "Signaling 'i_am_here'...";
+            i_am_here_rv = this->rpc->call("i_am_here").as<bool>();
+            EVLOG_debug << "...got: " << i_am_here_rv;
+
+        } catch (const rpc::system_error& e) {
+            // keep retrying on connect errors (with a small delay)
+            std::this_thread::sleep_for(1s);
+            continue;
+        } catch (const rpc::timeout& e) {
+            // keep retrying on timeout (without further delay)
+            continue;
+        }
+    } while (i_am_here_rv);
+
+    // once 'i_am_here' returned, we are allowed to call all other RPC callbacks as well
+    // let's move from 'init' phase to 'ready' simultaneously with peer
+    EVLOG_debug << "Signaling 'i_am_ready'...";
     this->rpc->call("i_am_ready");
+
+    // clear the global timeout again, we want usual RPC calls to "hang" when connection is lost
+    this->rpc->clear_timeout();
 }
 
 void SatelliteController::ready() {
@@ -59,7 +103,13 @@ void SatelliteController::ready() {
     invoke_ready(*p_system);
 
     while (this->rpc->get_connection_state() == rpc::client::connection_state::connected) {
-        json event_list = json::parse(this->rpc->call("retrieve_vars").as<std::string>());
+        // we don't use a sync call here since we want to use our own timeout here
+        auto future = this->rpc->async_call("retrieve_vars");
+        auto wait_result = future.wait_for(30s); // we need this large timeout at the moment due to OCPP GetDiagnostics upload
+        if (wait_result == std::future_status::timeout)
+            break;
+
+        json event_list = json::parse(future.get().as<std::string>());
 
         for (auto& event : event_list) {
             if (event["interface"] == "auth_token_provider") {
@@ -109,10 +159,11 @@ void SatelliteController::ready() {
         std::this_thread::sleep_for(25ms);
     }
 
-    EVLOG_info << "Connection to remote agent lost. Terminating...";
+    EVLOG_info << "Connection to SatelliteAgent on " << this->config.hostname << ":" << this->config.port << " lost. Terminating...";
 
     if (not this->disconnect_expected) {
-        std::exit(0);
+        EVLOG_warning << "...and since this was not expected, we terminate the whole EVerest.";
+        std::exit(1);
     }
 }
 

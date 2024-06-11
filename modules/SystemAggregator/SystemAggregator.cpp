@@ -56,9 +56,81 @@ void SystemAggregator::init() {
         });
     }
 
-    this->r_system[0]->subscribe_firmware_update_status([this](types::system::FirmwareUpdateStatus firmware_update_status) {
-        this->p_system->publish_firmware_update_status(firmware_update_status);
-    });
+    for (std::size_t i = 0; i < this->r_system.size(); ++i) {
+        this->r_system[i]->subscribe_firmware_update_status([this, i](types::system::FirmwareUpdateStatus firmware_update_status) {
+            // get the lock to access the map etc.
+            std::scoped_lock lock(this->lock_fw_update_status);
+
+            EVLOG_info << "System #" << i << " reported FirmwareUpdateStatus: " << firmware_update_status.firmware_update_status
+                       << " (" << firmware_update_status.request_id << ")";
+
+            // we already published a final status
+            if (this->fw_update_final_one_reported) {
+                EVLOG_debug << "System #" << i << ": reporting suppressed since a final FirmwareUpdateStatus was already published";
+                return;
+            }
+
+            // some of the status messages (from the satellites) are not imported - we rely on the current system
+            // to report them; so we can filter these here out and just pass them from local system
+            if (firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::DownloadScheduled ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::DownloadPaused ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InstallRebooting ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InstallScheduled ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::SignatureVerified) {
+
+                if (i == 0) {
+                    EVLOG_info << "reporting FirmwareUpdateStatus: " << firmware_update_status.firmware_update_status
+                               << " (" << firmware_update_status.request_id << ")";
+                    this->p_system->publish_firmware_update_status(firmware_update_status);
+                }
+
+                return;
+            }
+
+            // summarized status messages
+            if (firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::Downloaded ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::Idle ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::Installing ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::Installed) {
+                // increase feedback counter...
+                this->fw_update_feedback_counter[firmware_update_status.firmware_update_status]++;
+
+                // ...and when all reported, then publish this too
+                if (this->fw_update_feedback_counter[firmware_update_status.firmware_update_status] == this->r_system.size()) {
+                    EVLOG_info << "reporting FirmwareUpdateStatus: " << firmware_update_status.firmware_update_status
+                               << " (" << firmware_update_status.request_id << ")";
+                    this->p_system->publish_firmware_update_status(firmware_update_status);
+                }
+
+                return;
+            }
+
+            // immediately published, but only once
+            if (firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::DownloadFailed ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::Downloading ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InstallationFailed ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InstallVerificationFailed ||
+                firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InvalidSignature) {
+
+                if (!this->fw_update_already_reported[firmware_update_status.firmware_update_status]) {
+                    EVLOG_info << "reporting FirmwareUpdateStatus: " << firmware_update_status.firmware_update_status
+                               << " (" << firmware_update_status.request_id << ")";
+                    // publish it...
+                    this->p_system->publish_firmware_update_status(firmware_update_status);
+                    // ...and remember it
+                    this->fw_update_already_reported[firmware_update_status.firmware_update_status] = true;
+
+                    if (firmware_update_status.firmware_update_status != types::system::FirmwareUpdateStatusEnum::Downloading) {
+                        this->fw_update_final_one_reported = true;
+                    }
+                }
+
+                return;
+            }
+
+            EVLOG_warning << "unhandled firmware update status report detected (" << firmware_update_status.firmware_update_status << ")";
+        });
+    }
 }
 
 void SystemAggregator::ready() {

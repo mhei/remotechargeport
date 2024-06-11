@@ -66,8 +66,10 @@ public:
     // insert your public definitions here
     ~SatelliteController();
 
+    /// @brief Handle of an RPC client object, connecting to a SatelliteAgent instance
     std::unique_ptr<rpc::client> rpc;
 
+    /// @brief Used to remember whether a (possible) disconnect in the future is expected.
     std::atomic_bool disconnect_expected{false};
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
 

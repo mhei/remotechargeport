@@ -18,12 +18,18 @@ void systemImpl::ready() {
 
 types::system::UpdateFirmwareResponse
 systemImpl::handle_update_firmware(types::system::FirmwareUpdateRequest& firmware_update_request) {
+    types::system::UpdateFirmwareResponse rv;
     json j = firmware_update_request;
-    std::string rv;
+    std::string rpc_rv;
 
-    rv = this->mod->rpc->call("system_update_firmware", j.dump()).as<std::string>();
+    rpc_rv = this->mod->rpc->call("system_update_firmware", j.dump()).as<std::string>();
+    rv = types::system::string_to_update_firmware_response(rpc_rv);
 
-    return types::system::string_to_update_firmware_response(rv);
+    if (rv == types::system::UpdateFirmwareResponse::Accepted) {
+        this->mod->disconnect_expected = true;
+    }
+
+    return rv;
 }
 
 void systemImpl::handle_allow_firmware_installation() {

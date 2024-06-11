@@ -56,6 +56,12 @@ public:
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
     // insert your public definitions here
 
+    // remember incoming status messages/counters and mutex to protect
+    std::map<types::system::FirmwareUpdateStatusEnum, unsigned int> fw_update_feedback_counter;
+    std::map<types::system::FirmwareUpdateStatusEnum, bool> fw_update_already_reported;
+    bool fw_update_final_one_reported;
+    std::mutex lock_fw_update_status;
+
     // maps for all ongoing log upload requests
     std::map<int32_t, systemaggregator_upload_log_request> log_uploads;
     std::map<std::string, int32_t> type_to_log_uploads_map;

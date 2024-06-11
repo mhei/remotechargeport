@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14.7)
 
 project(remotechargeport
-    VERSION 2024.02.0
+    VERSION 2024.05.0
     DESCRIPTION "EVerest modules for satellite charge ports"
     LANGUAGES CXX
 )
@@ -25,7 +25,6 @@ if(NOT DISABLE_EDM)
     evc_setup_edm()
 else()
     find_package(everest-core REQUIRED)
-    find_package(everest-framework REQUIRED)
 endif()
 
 ev_add_project()
