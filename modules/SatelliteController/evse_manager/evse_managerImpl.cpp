@@ -75,13 +75,6 @@ void evse_managerImpl::handle_set_external_limits(types::energy::ExternalLimits&
     this->mod->rpc->call("evse_manager_set_external_limits", j.dump());
 }
 
-types::evse_manager::SwitchThreePhasesWhileChargingResult
-evse_managerImpl::handle_switch_three_phases_while_charging(bool& three_phases) {
-    std::string rv = this->mod->rpc->call("evse_manager_switch_three_phases_while_charging", three_phases).as<std::string>();
-
-    return types::evse_manager::string_to_switch_three_phases_while_charging_result(rv);
-}
-
 void evse_managerImpl::handle_set_get_certificate_response(
     types::iso15118_charger::Response_Exi_Stream_Status& certificate_response) {
     json j = certificate_response;
