@@ -112,6 +112,20 @@ void SystemAggregator::init() {
                 firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InstallVerificationFailed ||
                 firmware_update_status.firmware_update_status == types::system::FirmwareUpdateStatusEnum::InvalidSignature) {
 
+                // InvalidSignature must not be notified before Downloaded, which is summarized above
+                if (firmware_update_status.firmware_update_status ==
+                        types::system::FirmwareUpdateStatusEnum::InvalidSignature &&
+                    this->fw_update_feedback_counter[types::system::FirmwareUpdateStatusEnum::Downloaded] > 0 &&
+                    this->fw_update_feedback_counter[types::system::FirmwareUpdateStatusEnum::Downloaded] <
+                        this->r_system.size()) {
+                    types::system::FirmwareUpdateStatus status;
+                    status.firmware_update_status = types::system::FirmwareUpdateStatusEnum::Downloaded;
+                    status.request_id = firmware_update_status.request_id;
+                    this->p_system->publish_firmware_update_status(status);
+                    this->fw_update_feedback_counter[types::system::FirmwareUpdateStatusEnum::Downloaded] =
+                        this->r_system.size();
+                }
+
                 if (!this->fw_update_already_reported[firmware_update_status.firmware_update_status]) {
                     EVLOG_info << "reporting FirmwareUpdateStatus: " << firmware_update_status.firmware_update_status
                                << " (" << firmware_update_status.request_id << ")";
