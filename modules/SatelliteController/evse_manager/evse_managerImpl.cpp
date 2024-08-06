@@ -83,7 +83,7 @@ evse_managerImpl::handle_switch_three_phases_while_charging(bool& three_phases) 
 }
 
 void evse_managerImpl::handle_set_get_certificate_response(
-    types::iso15118_charger::Response_Exi_Stream_Status& certificate_response) {
+    types::iso15118_charger::ResponseExiStreamStatus& certificate_response) {
     json j = certificate_response;
 
     this->mod->rpc->call("evse_manager_set_get_certificate_response", j.dump());
