@@ -68,7 +68,7 @@ void SatelliteAgent::init() {
          this->add_to_event_list("evse_manager", "hw_capabilities", value);
     });
 
-    this->r_evse_manager->subscribe_iso15118_certificate_request([&](types::iso15118_charger::Request_Exi_Stream_Schema value) {
+    this->r_evse_manager->subscribe_iso15118_certificate_request([&](types::iso15118_charger::RequestExiStreamSchema value) {
          this->add_to_event_list("evse_manager", "iso15118_certificate_request", value);
     });
 
