@@ -101,7 +101,7 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
         this->mod->log_uploads[s->second].is_running = false;
 
         types::system::UploadLogsResponse rv;
-        rv.upload_logs_status = types::system::UploadLogsStatus::AcceptedCancelled;
+        rv.upload_logs_status = types::system::UploadLogsStatus::AcceptedCanceled;
 
         return rv;
 
