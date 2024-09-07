@@ -11,7 +11,7 @@ find_package(everest-cmake 0.1
     PATHS ../everest-cmake
 )
 
-option(CREATE_SYMLINKS "Create symlinks to javascript modules and auxillary files - for development purposes" OFF)
+option(CREATE_SYMLINKS "Create symlinks to javascript modules and auxiliary files - for development purposes" OFF)
 option(CMAKE_RUN_CLANG_TIDY "Run clang-tidy" OFF)
 option(BUILD_TESTING "Run unit tests" OFF)
 

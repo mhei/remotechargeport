@@ -31,7 +31,7 @@ types::system::UpdateFirmwareResponse
 systemImpl::handle_update_firmware(types::system::FirmwareUpdateRequest& firmware_update_request) {
     std::scoped_lock lock(this->mod->lock_fw_update_status);
 
-    // clear boths maps which remembered status of last operation
+    // clear both maps which remembered status of last operation
     this->mod->fw_update_feedback_counter.clear();
     this->mod->fw_update_already_reported.clear();
     this->mod->fw_update_final_one_reported = false;
@@ -133,7 +133,7 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
     modified_request.request_id.emplace(request_id);
 
     // push request out to local system and satellites
-    // note: i wraps so the comparision is special
+    // note: it wraps so the comparison is special
     for (std::size_t i = this->mod->r_system.size() - 1; i < this->mod->r_system.size(); --i) {
 
         modified_request.location =

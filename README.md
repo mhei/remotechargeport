@@ -41,7 +41,7 @@ call is intercepted by the `SatelliteController`, passed via the RPC connection 
 `SatelliteAgent` and is on this system delivered to the `EvseManager`.
 Of course, any return values are passed back, as any variables published at random times from the
 remote `EvseManager`.
-That way, the RPC connection to the remote system is kind of opague for the main system, however,
+That way, the RPC connection to the remote system is kind of opaque for the main system, however,
 a short delay cannot be prevented by design.
 
 The decision to use a dedicated RPC connection for each satellite and not to re-use
@@ -92,11 +92,11 @@ restart the EVerest system in such a case so that the common synchronzation poin
 
 # Requirements
 
-As mentioned, [rpclib](http://rpclib.net/) is used as underlaying RPC framework.
+As mentioned, [rpclib](http://rpclib.net/) is used as underlying RPC framework.
 Please note, that you need a slightly modified version from my
 [personal fork](https://github.com/mhei/rpclib/branches). This adds a helper
 function to determine the local endpoint address with is passed to the
-`SatelliteAgent` for example when a diagnostics upload should be transfered
+`SatelliteAgent` for example when a diagnostics upload should be transferred
 to the main system.
 
 # Build and Install
