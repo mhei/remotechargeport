@@ -7,6 +7,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include "configuration.h"
 #include "SatelliteAgent.hpp"
 #include <rpc/server.h>
 #include <rpc/this_server.h>
@@ -20,6 +21,8 @@ namespace module {
 
 void SatelliteAgent::init() {
     invoke_init(*p_auth);
+
+    EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
     this->event_list = json::array();
 

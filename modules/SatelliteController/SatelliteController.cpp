@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include "configuration.h"
 #include "SatelliteController.hpp"
 #include <rpc/client.h>
 #include <rpc/rpc_error.h>
@@ -26,6 +27,8 @@ void SatelliteController::init() {
     invoke_init(*p_energy);
     invoke_init(*p_evse_manager);
     invoke_init(*p_system);
+
+    EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
     //
     // register all callbacks for our desired interfaces

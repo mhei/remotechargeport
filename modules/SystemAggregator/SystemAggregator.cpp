@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright Pionix GmbH and Contributors to EVerest
-#include "SystemAggregator.hpp"
 #include <mutex>
+#include "configuration.h"
+#include "SystemAggregator.hpp"
 
 namespace module {
 
 void SystemAggregator::init() {
     invoke_init(*p_system);
+
+    EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
     for (std::size_t i = 0; i < this->r_system.size(); ++i) {
         this->r_system[i]->subscribe_log_status([this, i](types::system::LogStatus log_status) {
