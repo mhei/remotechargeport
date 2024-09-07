@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14.7)
 
 project(remotechargeport
-    VERSION 2024.07.0
+    VERSION 2024.08.0
     DESCRIPTION "EVerest modules for satellite charge ports"
     LANGUAGES CXX
 )
