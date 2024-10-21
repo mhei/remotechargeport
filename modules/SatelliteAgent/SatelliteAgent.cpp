@@ -63,6 +63,10 @@ void SatelliteAgent::init() {
         this->add_to_event_list("evse_manager", "powermeter", value);
     });
 
+    this->r_evse_manager->subscribe_powermeter_public_key_ocmf([&](std::string value) {
+        this->add_to_event_list("evse_manager", "powermeter_public_key_ocmf", value);
+    });
+
     this->r_evse_manager->subscribe_evse_id([&](std::string value) {
          this->add_to_event_list("evse_manager", "evse_id", value);
     });

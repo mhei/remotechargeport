@@ -136,6 +136,8 @@ void SatelliteController::ready() {
                     this->p_evse_manager->publish_telemetry(event["value"]);
                 else if (event["var"] == "powermeter")
                     this->p_evse_manager->publish_powermeter(event["value"]);
+                else if (event["var"] == "powermeter_public_key_ocmf")
+                    this->p_evse_manager->publish_powermeter_public_key_ocmf(event["value"]);
                 else if (event["var"] == "evse_id")
                     this->p_evse_manager->publish_evse_id(event["value"]);
                 else if (event["var"] == "hw_capabilities")
