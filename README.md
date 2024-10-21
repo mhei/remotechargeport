@@ -150,11 +150,12 @@ Note, that this means that there might be a delay after a new upstream EVerest r
 
 And a small note: the second version number has a leading zero here so that it sorts better.
 
-## Compatibility matrix
+## Compatibility Matrix
 
 | Tag       | EVerest release              |
 |-----------|------------------------------|
-| 2024.08.0 | 2024.8.0 or newer[^or_newer] |
+| 2024.09.0 | 2024.9.0 or newer[^or_newer] |
+| 2024.08.0 | 2024.8.0                     |
 | 2024.07.0 | 2024.7.1 <br> 2024.7.0       |
 | 2024.05.0 | 2024.6.0 <br> 2024.5.0       |
 | 2024.03.1 | 2024.3.0                     |
