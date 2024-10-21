@@ -291,10 +291,6 @@ void SatelliteAgent::init_rpc_binds() {
         return this->r_evse_manager->call_force_unlock(connector_id);
     });
 
-    this->rpc->bind("evse_manager_set_external_limits", [&](std::string& value) {
-        return this->r_evse_manager->call_set_external_limits(json::parse(value));
-    });
-
     this->rpc->bind("evse_manager_set_get_certificate_response", [&](std::string& certificate_response) {
         this->r_evse_manager->call_set_get_certificate_response(json::parse(certificate_response));
     });

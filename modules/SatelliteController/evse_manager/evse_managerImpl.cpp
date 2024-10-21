@@ -69,12 +69,6 @@ bool evse_managerImpl::handle_force_unlock(int& connector_id) {
     return this->mod->rpc->call("evse_manager_force_unlock", connector_id).as<bool>();
 }
 
-void evse_managerImpl::handle_set_external_limits(types::energy::ExternalLimits& value) {
-    json j = value;
-
-    this->mod->rpc->call("evse_manager_set_external_limits", j.dump());
-}
-
 void evse_managerImpl::handle_set_get_certificate_response(
     types::iso15118_charger::ResponseExiStreamStatus& certificate_response) {
     json j = certificate_response;
