@@ -15,3 +15,15 @@ cmds:
     result:
       description: True if connected, else otherwise.
       type: boolean
+# reference all possible errors here which could be forwarded from SatelliteAgent,
+# SatelliteController will re-raise them using this interface to keep implementation simple
+errors:
+  - reference: /errors/ac_rcd
+  - reference: /errors/connector_lock
+  - reference: /errors/evse_board_support
+  - reference: /errors/evse_manager
+  - reference: /errors/generic
+  - reference: /errors/isolation_monitor
+  - reference: /errors/power_supply_DC
+  - reference: /errors/powermeter
+  - reference: /errors/system
