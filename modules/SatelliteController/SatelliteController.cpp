@@ -26,6 +26,7 @@ void SatelliteController::init() {
     invoke_init(*p_auth_token_provider);
     invoke_init(*p_energy);
     invoke_init(*p_evse_manager);
+    invoke_init(*p_satellite);
     invoke_init(*p_system);
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
@@ -103,6 +104,7 @@ void SatelliteController::ready() {
     invoke_ready(*p_auth_token_provider);
     invoke_ready(*p_energy);
     invoke_ready(*p_evse_manager);
+    invoke_ready(*p_satellite);
     invoke_ready(*p_system);
 
     while (this->rpc->get_connection_state() == rpc::client::connection_state::connected) {
