@@ -13,6 +13,7 @@
 #include <rpc/this_server.h>
 #include <rpc/this_session.h>
 #include <nlohmann/json.hpp>
+#include <utils/error/error_json.hpp>
 
 using namespace std::chrono_literals;
 using nlohmann::json;
@@ -25,6 +26,25 @@ void SatelliteAgent::init() {
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
+    // to queue received error events
+    this->error_event_list = json::array();
+
+    //
+    // register global error reception to allow forwarding to remote peer
+    //
+    const auto error_callback = [this](const Everest::error::Error& error) {
+        EVLOG_debug << "forwarding raised error: " << error.type;
+        this->add_to_error_event_list("raise", error);
+    };
+
+    const auto error_cleared_callback = [this](const Everest::error::Error& error) {
+        EVLOG_debug << "forwarding cleared error: " << error.type;
+        this->add_to_error_event_list("clear", error);
+    };
+
+    subscribe_global_all_errors(error_callback, error_cleared_callback);
+
+    // queues received events
     this->event_list = json::array();
 
     //
@@ -242,6 +262,14 @@ void SatelliteAgent::add_to_event_list(std::string interface, std::string var, j
         this->event_list.insert(this->event_list.end(), j);
 }
 
+void SatelliteAgent::add_to_error_event_list(std::string action, const Everest::error::Error& error) {
+        std::scoped_lock lock(this->error_event_list_guard);
+
+        json j{ {"action", action}, {"error", error} };
+
+        this->error_event_list.insert(this->error_event_list.end(), j);
+}
+
 void SatelliteAgent::init_rpc_binds() {
 
     this->rpc->bind("energy_enforce_limits", [&](std::string& value) {
@@ -397,14 +425,23 @@ void SatelliteAgent::init_rpc_binds() {
         }
     });
 
-    this->rpc->bind("retrieve_vars", [&]() {
-        std::unique_lock<std::mutex> lock(this->event_list_guard);
+    this->rpc->bind("retrieve_vars_and_errors", [&]() {
+        std::string rv;
 
-        std::string rv = this->event_list.dump();
+        // using a scoped lock with both mutexes to access & reset the lists
+        {
+            std::scoped_lock lock(this->event_list_guard, this->error_event_list_guard);
 
-        this->event_list = json::array();
+            json j{
+                {"vars", this->event_list},
+                {"errors", this->error_event_list},
+            };
 
-        lock.unlock();
+            rv = j.dump();
+
+            this->event_list = json::array();
+            this->error_event_list = json::array();
+        }
 
         this->cv_retrieve_vars_seen.notify_all();
 
