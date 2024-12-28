@@ -165,7 +165,6 @@ And a small note: the second version number has a leading zero here so that it s
 
 # Open TODOs
 
-- The newer error handling framework of EVerest is not yet implemented.
 - The configuration of the satellites is currently done with IPv4 addresses or hostnames.
   IP addresses require either a DHCP server which is capable of pinning MAC addresses
   to IP addresses (so that each IP client always receives the same IP address for a given
