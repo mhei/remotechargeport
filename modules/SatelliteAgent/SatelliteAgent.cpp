@@ -21,6 +21,7 @@ namespace module {
 
 void SatelliteAgent::init() {
     invoke_init(*p_auth);
+    invoke_init(*p_system);
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
@@ -203,6 +204,7 @@ void SatelliteAgent::init() {
 
 void SatelliteAgent::ready() {
     invoke_ready(*p_auth);
+    invoke_ready(*p_system);
 
     std::unique_lock<std::mutex> lock(this->event_list_guard);
 
