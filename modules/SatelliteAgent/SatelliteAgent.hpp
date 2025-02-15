@@ -121,8 +121,19 @@ private:
 
     std::atomic_bool disconnect_expected{false};
 
+    /// @brief Accumulates all error events which need to be passed to the
+    ///        SatelliteController until it calls the RPC call "retrieve_errors".
+    ///        This call empties it, and then next errors are accumulated again.
+    json error_event_list;
+    /// @brief Mutex used for locks to protect the `errors_raised_list` and `errors_cleared_list`.
+    std::mutex error_event_list_guard;
+
     /// @brief Helper to add an item to the event list.
     void add_to_event_list(std::string interface, std::string var, json value);
+
+    /// @brief Helper to add an item to the error event list.
+    void add_to_error_event_list(std::string action, const Everest::error::Error& error);
+
     /// @brief Helper to register all 'real' RPC functors.
     void init_rpc_binds();
     /// @brief Helper to initiate a reset.

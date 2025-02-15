@@ -10,6 +10,7 @@
 #include <rpc/client.h>
 #include <rpc/rpc_error.h>
 #include <nlohmann/json.hpp>
+#include <utils/error/error_json.hpp>
 
 using json = nlohmann::json;
 using namespace std::chrono_literals;
@@ -26,6 +27,7 @@ void SatelliteController::init() {
     invoke_init(*p_auth_token_provider);
     invoke_init(*p_energy);
     invoke_init(*p_evse_manager);
+    invoke_init(*p_satellite);
     invoke_init(*p_system);
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
@@ -103,18 +105,19 @@ void SatelliteController::ready() {
     invoke_ready(*p_auth_token_provider);
     invoke_ready(*p_energy);
     invoke_ready(*p_evse_manager);
+    invoke_ready(*p_satellite);
     invoke_ready(*p_system);
 
     while (this->rpc->get_connection_state() == rpc::client::connection_state::connected) {
         // we don't use a sync call here since we want to use our own timeout here
-        auto future = this->rpc->async_call("retrieve_vars");
+        auto future = this->rpc->async_call("retrieve_vars_and_errors");
         auto wait_result = future.wait_for(30s); // we need this large timeout at the moment due to OCPP GetDiagnostics upload
         if (wait_result == std::future_status::timeout)
             break;
 
-        json event_list = json::parse(future.get().as<std::string>());
+        json j = json::parse(future.get().as<std::string>());
 
-        for (auto& event : event_list) {
+        for (auto& event : j["vars"]) {
             if (event["interface"] == "auth_token_provider") {
                 if (event["var"] == "provided_token")
                    this->p_auth_token_provider->publish_provided_token(event["value"]);
@@ -159,6 +162,15 @@ void SatelliteController::ready() {
                 else if (event["var"] == "log_status")
                    this->p_system->publish_log_status(event["value"]);
             }
+        }
+
+        for (auto& event : j["errors"]) {
+            Everest::error::Error e{event["error"]};
+
+            if (event["action"] == "raise")
+                this->p_satellite->raise_error(e);
+            if (event["action"] == "clear")
+                this->p_satellite->clear_error(e.type);
         }
 
         std::this_thread::sleep_for(25ms);
