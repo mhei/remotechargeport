@@ -31,7 +31,7 @@ if ! tar -czf "$WORK_DIR/$FN" -C "$UPLOAD_DIR" "$@"; then
     exit 1
 fi
 
-curl --progress-bar --connect-timeout "$CONNECTION_TIMEOUT" -T "$WORK_DIR/$FN" "$URL"
+curl --progress-bar --ssl --fail --connect-timeout "$CONNECTION_TIMEOUT" -T "$WORK_DIR/$FN" "$URL"
 curl_exit_code=$?
 if [[ $curl_exit_code -eq 0 ]]; then
     echo "Uploaded"
