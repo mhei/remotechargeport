@@ -75,10 +75,6 @@ void SatelliteAgent::init() {
          this->add_to_event_list("evse_manager", "hw_capabilities", value);
     });
 
-    this->r_evse_manager->subscribe_iso15118_certificate_request([&](types::iso15118_charger::RequestExiStreamSchema value) {
-         this->add_to_event_list("evse_manager", "iso15118_certificate_request", value);
-    });
-
     this->r_evse_manager->subscribe_enforced_limits([&](types::energy::EnforcedLimits value) {
         this->add_to_event_list("evse_manager", "enforced_limits", value);
     });
@@ -289,10 +285,6 @@ void SatelliteAgent::init_rpc_binds() {
 
     this->rpc->bind("evse_manager_force_unlock", [&](int& connector_id) {
         return this->r_evse_manager->call_force_unlock(connector_id);
-    });
-
-    this->rpc->bind("evse_manager_set_get_certificate_response", [&](std::string& certificate_response) {
-        this->r_evse_manager->call_set_get_certificate_response(json::parse(certificate_response));
     });
 
     this->rpc->bind("evse_manager_external_ready_to_start_charging", [&]() {

@@ -142,8 +142,6 @@ void SatelliteController::ready() {
                     this->p_evse_manager->publish_evse_id(event["value"]);
                 else if (event["var"] == "hw_capabilities")
                    this->p_evse_manager->publish_hw_capabilities(event["value"]);
-                else if (event["var"] == "iso15118_certificate_request")
-                   this->p_evse_manager->publish_iso15118_certificate_request(event["value"]);
                 else if (event["var"] == "enforced_limits")
                    this->p_evse_manager->publish_enforced_limits(event["value"]);
                 else if (event["var"] == "waiting_for_external_ready")
