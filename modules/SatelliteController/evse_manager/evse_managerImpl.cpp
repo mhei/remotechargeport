@@ -69,13 +69,6 @@ bool evse_managerImpl::handle_force_unlock(int& connector_id) {
     return this->mod->rpc->call("evse_manager_force_unlock", connector_id).as<bool>();
 }
 
-void evse_managerImpl::handle_set_get_certificate_response(
-    types::iso15118_charger::ResponseExiStreamStatus& certificate_response) {
-    json j = certificate_response;
-
-    this->mod->rpc->call("evse_manager_set_get_certificate_response", j.dump());
-}
-
 bool evse_managerImpl::handle_external_ready_to_start_charging() {
     return this->mod->rpc->call("evse_manager_external_ready_to_start_charging").as<bool>();
 }
