@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright Pionix GmbH and Contributors to EVerest
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 #ifndef EVSE_MANAGER_EVSE_MANAGER_IMPL_HPP
 #define EVSE_MANAGER_EVSE_MANAGER_IMPL_HPP
 

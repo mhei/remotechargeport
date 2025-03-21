@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright Pionix GmbH and Contributors to EVerest
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 #ifndef SATELLITE_SATELLITE_IMPL_HPP
 #define SATELLITE_SATELLITE_IMPL_HPP
 

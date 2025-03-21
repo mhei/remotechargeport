@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright Michael Heimpold
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 
 #pragma once
 

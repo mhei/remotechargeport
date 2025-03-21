@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright Pionix GmbH and Contributors to EVerest
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 
 #include "systemImpl.hpp"
 #include <string>

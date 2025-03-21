@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright Pionix GmbH and Contributors to EVerest
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 #ifndef AUTH_TOKEN_PROVIDER_AUTH_TOKEN_PROVIDER_IMPL_HPP
 #define AUTH_TOKEN_PROVIDER_AUTH_TOKEN_PROVIDER_IMPL_HPP
 

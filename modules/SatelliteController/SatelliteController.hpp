@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright Pionix GmbH and Contributors to EVerest
+// Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 #ifndef SATELLITE_CONTROLLER_HPP
 #define SATELLITE_CONTROLLER_HPP
 
