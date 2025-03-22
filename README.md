@@ -139,7 +139,11 @@ https://github.com/chargebyte/meta-chargebyte-everest/tree/kirkstone/recipes-cor
 
 # Configuration
 
-TODO: add example configurations for main and satellite system
+Please find example configuration files for the main and satellite system sides in the `config`
+sub-directory:
+
+* chargebyte's Charge Control C platform is used as base for a dual AC charger example
+* chargebyte's Charge SOM platform is used as example for a dual DC charger setup
 
 # Releases and Versioning
 
