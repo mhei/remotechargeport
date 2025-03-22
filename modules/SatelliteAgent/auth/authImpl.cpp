@@ -13,11 +13,11 @@ void authImpl::ready() {
 }
 
 void authImpl::handle_set_connection_timeout(int& connection_timeout) {
-    // your code for cmd set_connection_timeout goes here
+    (void)connection_timeout;
 }
 
 void authImpl::handle_set_master_pass_group_id(std::string& master_pass_group_id) {
-    // your code for cmd set_master_pass_group_id goes here
+    (void)master_pass_group_id;
 }
 
 } // namespace auth
