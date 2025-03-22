@@ -1,0 +1,109 @@
+#
+# This is an example configuration for chargebyte's Charge SOM platform as remote satellite agent
+# side. It uses simulation modules for DC power supply and IMD. The RFID reader is expected to be
+# connected physically to the remote satellite controller system.
+# In this example, a real (AC) meter is connected via RS-485 port on this system.
+#
+# Note:
+# At the moment, the 'evse_security' module is used on this side as an additional/second instance.
+# Usually, there should only be a single instance on the controller side, but the interface is
+# not yet forwarded between both sides, since there are calls that rely on access to the filesystem
+# (which, however, is not shared between both Linux systems).
+# For this reason, this setup will probably not work for the moment with PnC and/or ISO15118-20.
+#
+active_modules:
+  bsp:
+    module: CbChargeSOMDriver
+    mapping:
+      module:
+        evse: 2
+  serialcommhub_x15:
+    module: SerialCommHub
+    config_implementation:
+      main:
+        serial_port: /dev/ttyLP3
+        baudrate: 9600
+        parity: 0
+  powermeter:
+    module: GenericPowermeter
+    mapping:
+      module:
+        evse: 2
+    config_implementation:
+      main:
+        model: Eastron_SDM72DM-V2
+        powermeter_device_id: 1
+    connections:
+      serial_comm_hub:
+        - module_id: serialcommhub_x15
+          implementation_id: main
+  connector:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 2
+    config_module:
+      connector_id: 2
+      connector_type: cCCS2
+      charge_mode: DC
+      evse_id: "DE*MHE*E1234567*2"
+      evse_id_din: 49A80737A45678
+      session_logging: true
+      session_logging_path: /tmp/everest-logs
+      session_logging_xml: false
+      request_zero_power_in_idle: true
+      external_ready_to_start_charging: true
+    connections:
+      bsp:
+        - module_id: bsp
+          implementation_id: evse_board_support
+      slac:
+        - module_id: evse_slac
+          implementation_id: main
+      powersupply_DC:
+        - module_id: powersupply_dc
+          implementation_id: main
+      imd:
+        - module_id: imd
+          implementation_id: main
+      hlc:
+        - module_id: iso15118_charger
+          implementation_id: charger
+      powermeter_grid_side:
+        - module_id: powermeter
+          implementation_id: main
+  evse_slac:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth1
+  iso15118_charger:
+    module: EvseV2G
+    config_module:
+      device: eth1
+    connections:
+      security:
+        - module_id: evse_security
+          implementation_id: main
+  evse_security:
+    module: EvseSecurity
+    config_module:
+      private_key_password: "123456"
+  powersupply_dc:
+    module: DCSupplySimulator
+  imd:
+    module: IMDSimulator
+  remote_controller:
+    module: SatelliteAgent
+    connections:
+      evse_manager:
+        - module_id: connector
+          implementation_id: evse
+      energy:
+        - module_id: connector
+          implementation_id: energy_grid
+      system:
+        - module_id: system
+          implementation_id: main
+  system:
+    module: CbSystem

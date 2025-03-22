@@ -1,0 +1,261 @@
+#
+# This is an example configuration for chargebyte's Charge Control C platform as remote satellite
+# controller side. It uses the simulation module as the RFID reader. An AC power meter is connected
+# via RS-485 port. The system is configured for simple PWM charging.
+# For the backend connection, an OCPP 1.6 instance is provided - this requires additional
+# configuration in dedicated OCPP configuration file.
+# This file demonstrates the 'controller side' and a dual system. The remote satellite agent
+# could be a AC port, too, but also an DC port is possible
+# (e.g. using chargebyte's Charge SOM platform).
+#
+active_modules:
+  api:
+    module: API
+    connections:
+      evse_energy_sink:
+        - module_id: api_sink_1
+          implementation_id: external_limits
+        - module_id: api_sink_2
+          implementation_id: external_limits
+      evse_manager:
+        - module_id: connector_1
+          implementation_id: evse
+        - module_id: connector_2
+          implementation_id: evse_manager
+      error_history:
+        - module_id: error_history
+          implementation_id: error_history
+  bsp:
+    module: CbTarragonDriver
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_type: IEC62196Type2Cable
+      contactor_1_feedback_type: nc
+      rcm_enable: true
+  tarragon_dig_in_ref:
+    module: CbTarragonDIs
+  serialcommhub_x7:
+    module: SerialCommHub
+    config_implementation:
+      main:
+        serial_port: /dev/ttymxc0
+        ignore_echo: true
+  powermeter:
+    module: GenericPowermeter
+    mapping:
+      module:
+        evse: 1
+    config_implementation:
+      main:
+        model: Eastron_SDM72DM
+        powermeter_device_id: 1
+    connections:
+      serial_comm_hub:
+        - module_id: serialcommhub_x7
+          implementation_id: main
+  connector_1:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+      connector_type: cType2
+      evse_id: "DE*MHE*E1234567*1"
+      has_ventilation: false
+      request_zero_power_in_idle: true
+      external_ready_to_start_charging: true
+    connections:
+      bsp:
+        - module_id: bsp
+          implementation_id: evse_board_support
+      ac_rcd:
+        - module_id: bsp
+          implementation_id: ac_rcd
+      powermeter_grid_side:
+        - module_id: powermeter
+          implementation_id: main
+  connector_2:
+    module: SatelliteController
+    mapping:
+      module:
+        evse: 2
+    config_module:
+      hostname: "192.168.1.11"
+    connections:
+      auth:
+        - module_id: auth
+          implementation_id: main
+      system:
+        - module_id: system_aggregator
+          implementation_id: system
+  ocpp_sink_1:
+    module: EnergyNode
+    mapping:
+      module:
+       evse: 1
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: connector_1
+          implementation_id: energy_grid
+  ocpp_sink_2:
+    module: EnergyNode
+    mapping:
+      module:
+       evse: 2
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: connector_2
+          implementation_id: energy
+  api_sink_1:
+    module: EnergyNode
+    mapping:
+      module:
+       evse: 1
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: ocpp_sink_1
+          implementation_id: energy_grid
+  api_sink_2:
+    module: EnergyNode
+    mapping:
+      module:
+       evse: 2
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: ocpp_sink_2
+          implementation_id: energy_grid
+  system_aggregator:
+    module: SystemAggregator
+    connections:
+      system:
+        - module_id: system
+          implementation_id: main
+        - module_id: connector_2
+          implementation_id: system
+      satellite:
+        - module_id: connector_2
+          implementation_id: satellite
+  energy_manager:
+    module: EnergyManager
+    connections:
+      energy_trunk:
+        - module_id: grid_connection_point
+          implementation_id: energy_grid
+  grid_connection_point:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 0
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: api_sink_1
+          implementation_id: energy_grid
+        - module_id: api_sink_2
+          implementation_id: energy_grid
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 10
+      prioritize_authorization_over_stopping_transaction: true
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+        - module_id: token_provider_1
+          implementation_id: main
+        - module_id: token_provider_2
+          implementation_id: main
+        - module_id: ocpp
+          implementation_id: auth_provider
+      token_validator:
+        - module_id: ocpp
+          implementation_id: auth_validator
+      evse_manager:
+        - module_id: connector_1
+          implementation_id: evse
+        - module_id: connector_2
+          implementation_id: evse_manager
+      kvs:
+        - module_id: persistent_store
+          implementation_id: main
+  persistent_store:
+    module: PersistentStore
+    config_module:
+      sqlite_db_file_path: /var/lib/everest/everest_persistent_store.db
+  evse_security:
+    module: EvseSecurity
+    config_module:
+      private_key_password: "123456"
+  system:
+    module: CbSystem
+  ocpp:
+    module: OCPP
+    config_module:
+      ChargePointConfigPath: /etc/everest/ocpp-config.json
+      UserConfigPath: /var/lib/everest/ocpp16/user-config.json
+      DatabasePath: /var/lib/everest/ocpp16
+    connections:
+      evse_manager:
+        - module_id: connector_1
+          implementation_id: evse
+        - module_id: connector_2
+          implementation_id: evse_manager
+      reservation:
+        - module_id: auth
+          implementation_id: reservation
+      auth:
+        - module_id: auth
+          implementation_id: main
+      security:
+        - module_id: evse_security
+          implementation_id: main
+      system:
+        - module_id: system_aggregator
+          implementation_id: system
+      evse_energy_sink:
+        - module_id: grid_connection_point
+          implementation_id: external_limits
+        - module_id: ocpp_sink_1
+          implementation_id: external_limits
+        - module_id: ocpp_sink_2
+          implementation_id: external_limits
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+  token_provider_1:
+    module: DummyTokenProvider
+    config_implementation:
+      main:
+        token: DEADBEEF
+    connections:
+      evse:
+        - module_id: connector_1
+          implementation_id: evse
+  token_provider_2:
+    module: DummyTokenProvider
+    config_implementation:
+      main:
+        token: CAFEBABE
+    connections:
+      evse:
+        - module_id: connector_2
+          implementation_id: evse_manager

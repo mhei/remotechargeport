@@ -1,0 +1,71 @@
+#
+# This is an example configuration for chargebyte's Charge Control C platform as remote satellite
+# agent side.
+#
+active_modules:
+  bsp:
+    module: CbTarragonDriver
+    mapping:
+      module:
+        evse: 2
+    config_module:
+      connector_type: IEC62196Type2Cable
+      contactor_1_feedback_type: nc
+      rcm_enable: true
+  tarragon_dig_in_ref:
+    module: CbTarragonDIs
+  serialcommhub_x7:
+    module: SerialCommHub
+    config_implementation:
+      main:
+        serial_port: /dev/ttymxc0
+        ignore_echo: true
+  powermeter:
+    module: GenericPowermeter
+    mapping:
+      module:
+        evse: 2
+    config_implementation:
+      main:
+        model: Eastron_SDM630-V2
+        powermeter_device_id: 1
+    connections:
+      serial_comm_hub:
+        - module_id: serialcommhub_x7
+          implementation_id: main
+  connector:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 2
+    config_module:
+      connector_id: 2
+      connector_type: cType2
+      evse_id: "DE*MHE*E1234567*2"
+      has_ventilation: false
+      request_zero_power_in_idle: true
+      external_ready_to_start_charging: true
+    connections:
+      bsp:
+        - module_id: bsp
+          implementation_id: evse_board_support
+      ac_rcd:
+        - module_id: bsp
+          implementation_id: ac_rcd
+      powermeter_grid_side:
+        - module_id: powermeter
+          implementation_id: main
+  remote_controller:
+    module: SatelliteAgent
+    connections:
+      evse_manager:
+        - module_id: connector
+          implementation_id: evse
+      energy:
+        - module_id: connector
+          implementation_id: energy_grid
+      system:
+        - module_id: system
+          implementation_id: main
+  system:
+    module: CbSystem
