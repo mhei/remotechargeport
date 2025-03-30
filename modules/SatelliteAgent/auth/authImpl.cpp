@@ -20,5 +20,10 @@ void authImpl::handle_set_master_pass_group_id(std::string& master_pass_group_id
     (void)master_pass_group_id;
 }
 
+std::string authImpl::handle_withdraw_authorization(types::authorization::WithdrawAuthorizationRequest& request) {
+    (void)request;
+    return "Rejected";
+}
+
 } // namespace auth
 } // namespace module
