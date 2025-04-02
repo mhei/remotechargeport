@@ -86,6 +86,9 @@ active_modules:
       powermeter_grid_side:
         - module_id: powermeter
           implementation_id: main
+      powermeter_car_side:
+        - module_id: powersupply_dc
+          implementation_id: powermeter
   evse_slac:
     module: EvseSlac
     config_implementation:
