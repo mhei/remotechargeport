@@ -317,8 +317,8 @@ void SatelliteAgent::init_rpc_binds() {
         return this->r_evse_manager->call_force_unlock(connector_id);
     });
 
-    this->rpc->bind("evse_manager_external_ready_to_start_charging", [&]() {
-        return this->r_evse_manager->call_external_ready_to_start_charging();
+    this->rpc->bind("evse_manager_set_plug_and_charge_configuration", [&](std::string& plug_and_charge_configuration) {
+        this->r_evse_manager->call_set_plug_and_charge_configuration(json::parse(plug_and_charge_configuration));
     });
 
     this->rpc->bind("system_update_firmware", [&](std::string& firmware_update_request) {

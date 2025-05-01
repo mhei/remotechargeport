@@ -73,5 +73,12 @@ bool evse_managerImpl::handle_external_ready_to_start_charging() {
     return this->mod->rpc->call("evse_manager_external_ready_to_start_charging").as<bool>();
 }
 
+void evse_managerImpl::handle_set_plug_and_charge_configuration(
+    types::evse_manager::PlugAndChargeConfiguration& plug_and_charge_configuration) {
+    json j = plug_and_charge_configuration;
+
+    this->mod->rpc->call("evse_manager_set_plug_and_charge_configuration", j.dump());
+}
+
 } // namespace evse_manager
 } // namespace module
