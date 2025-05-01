@@ -182,7 +182,7 @@ void SatelliteAgent::init() {
     this->rpc->bind("exit", [&]() {
         EVLOG_info << "Remote SatelliteController exited. Terminating too...";
 
-        this->disconnect_expected =true;
+        this->disconnect_expected = true;
 
         // gracefully shutdown the session and the server
         rpc::this_session().post_exit();
