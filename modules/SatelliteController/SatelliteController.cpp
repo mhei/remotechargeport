@@ -153,6 +153,8 @@ void SatelliteController::ready() {
                    this->p_evse_manager->publish_ready(event["value"]);
                 else if (event["var"] == "selected_protocol")
                    this->p_evse_manager->publish_selected_protocol(event["value"]);
+                else if (event["var"] == "supported_energy_transfer_modes")
+                   this->p_evse_manager->publish_supported_energy_transfer_modes(event["value"]);
             }
             if (event["interface"] == "system") {
                 if (event["var"] == "firmware_update_status")

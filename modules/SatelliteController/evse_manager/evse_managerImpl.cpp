@@ -80,5 +80,13 @@ void evse_managerImpl::handle_set_plug_and_charge_configuration(
     this->mod->rpc->call("evse_manager_set_plug_and_charge_configuration", j.dump());
 }
 
+types::evse_manager::UpdateAllowedEnergyTransferModesResult
+evse_managerImpl::handle_update_allowed_energy_transfer_modes(
+    std::vector<types::iso15118::EnergyTransferMode>& allowed_energy_transfer_modes) {
+    json j = allowed_energy_transfer_modes;
+    json rv = json::parse(this->mod->rpc->call("evse_manager_update_allowed_energy_transfer_modes", j.dump()).as<std::string>());
+    return rv;
+}
+
 } // namespace evse_manager
 } // namespace module

@@ -112,6 +112,10 @@ void SatelliteAgent::init() {
         this->add_to_event_list("evse_manager", "selected_protocol", value);
     });
 
+    this->r_evse_manager->subscribe_supported_energy_transfer_modes([&](std::vector<types::iso15118::EnergyTransferMode> value) {
+        this->add_to_event_list("evse_manager", "supported_energy_transfer_modes", value);
+    });
+
     if (not this->r_system.empty()) {
         this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
             this->add_to_event_list("system", "firmware_update_status", value);
@@ -323,6 +327,11 @@ void SatelliteAgent::init_rpc_binds() {
 
     this->rpc->bind("evse_manager_set_plug_and_charge_configuration", [&](std::string& plug_and_charge_configuration) {
         this->r_evse_manager->call_set_plug_and_charge_configuration(json::parse(plug_and_charge_configuration));
+    });
+
+    this->rpc->bind("evse_manager_update_allowed_energy_transfer_modes", [&](std::string& allowed_energy_transfer_modes) {
+        json j = this->r_evse_manager->call_update_allowed_energy_transfer_modes(json::parse(allowed_energy_transfer_modes));
+        return j.dump();
     });
 
     this->rpc->bind("system_update_firmware", [&](std::string& firmware_update_request) {
