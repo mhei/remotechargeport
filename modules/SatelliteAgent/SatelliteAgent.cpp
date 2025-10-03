@@ -301,10 +301,6 @@ void SatelliteAgent::init_rpc_binds() {
         this->r_evse_manager->call_cancel_reservation();
     });
 
-    this->rpc->bind("evse_manager_set_faulted", [&]() {
-        this->r_evse_manager->call_set_faulted();
-    });
-
     this->rpc->bind("evse_manager_pause_charging", [&]() {
         return this->r_evse_manager->call_pause_charging();
     });

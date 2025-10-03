@@ -47,10 +47,6 @@ void evse_managerImpl::handle_cancel_reservation() {
     this->mod->rpc->call("evse_manager_cancel_reservation");
 }
 
-void evse_managerImpl::handle_set_faulted() {
-    this->mod->rpc->call("evse_manager_set_faulted");
-}
-
 bool evse_managerImpl::handle_pause_charging() {
     return this->mod->rpc->call("evse_manager_pause_charging").as<bool>();
 }
