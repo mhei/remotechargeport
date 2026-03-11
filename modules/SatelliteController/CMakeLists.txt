@@ -28,8 +28,13 @@ target_sources(${MODULE_NAME}
         "auth_token_provider/auth_token_providerImpl.cpp"
         "energy/energyImpl.cpp"
         "evse_manager/evse_managerImpl.cpp"
+        "dc_external_derate/dc_external_derateImpl.cpp"
+        "display_message/display_messageImpl.cpp"
+        "iso15118_extensions/iso15118_extensionsImpl.cpp"
+        "ocpp_data_transfer/ocpp_data_transferImpl.cpp"
         "satellite/satelliteImpl.cpp"
         "system/systemImpl.cpp"
+        "uk_random_delay/uk_random_delayImpl.cpp"
 )
 
 # ev@c55432ab-152c-45a9-9d2e-7281d50c69c3:v1

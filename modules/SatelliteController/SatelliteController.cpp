@@ -27,8 +27,13 @@ void SatelliteController::init() {
     invoke_init(*p_auth_token_provider);
     invoke_init(*p_energy);
     invoke_init(*p_evse_manager);
+    invoke_init(*p_dc_external_derate);
+    invoke_init(*p_display_message);
+    invoke_init(*p_iso15118_extensions);
+    invoke_init(*p_ocpp_data_transfer);
     invoke_init(*p_satellite);
     invoke_init(*p_system);
+    invoke_init(*p_uk_random_delay);
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
 
@@ -105,8 +110,13 @@ void SatelliteController::ready() {
     invoke_ready(*p_auth_token_provider);
     invoke_ready(*p_energy);
     invoke_ready(*p_evse_manager);
+    invoke_ready(*p_dc_external_derate);
+    invoke_ready(*p_display_message);
+    invoke_ready(*p_iso15118_extensions);
+    invoke_ready(*p_ocpp_data_transfer);
     invoke_ready(*p_satellite);
     invoke_ready(*p_system);
+    invoke_ready(*p_uk_random_delay);
 
     while (this->rpc->get_connection_state() == rpc::client::connection_state::connected) {
         // we don't use a sync call here since we want to use our own timeout here
@@ -156,11 +166,29 @@ void SatelliteController::ready() {
                 else if (event["var"] == "supported_energy_transfer_modes")
                    this->p_evse_manager->publish_supported_energy_transfer_modes(event["value"]);
             }
+            if (event["interface"] == "dc_external_derate") {
+                if (event["var"] == "plug_temperature_C")
+                   this->p_dc_external_derate->publish_plug_temperature_C(event["value"]);
+            }
+            if (event["interface"] == "iso15118_extensions") {
+                if (event["var"] == "iso15118_certificate_request")
+                   this->p_iso15118_extensions->publish_iso15118_certificate_request(event["value"]);
+                else if (event["var"] == "charging_needs")
+                    this->p_iso15118_extensions->publish_charging_needs(event["value"]);
+                else if (event["var"] == "ev_info")
+                    this->p_iso15118_extensions->publish_ev_info(event["value"]);
+                else if (event["var"] == "service_renegotiation_supported")
+                    this->p_iso15118_extensions->publish_service_renegotiation_supported(event["value"]);
+            }
             if (event["interface"] == "system") {
                 if (event["var"] == "firmware_update_status")
                    this->p_system->publish_firmware_update_status(event["value"]);
                 else if (event["var"] == "log_status")
                    this->p_system->publish_log_status(event["value"]);
+            }
+            if (event["interface"] == "uk_random_delay") {
+                if (event["var"] == "countdown")
+                   this->p_uk_random_delay->publish_countdown(event["value"]);
             }
         }
 

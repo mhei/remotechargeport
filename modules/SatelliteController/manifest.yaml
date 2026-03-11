@@ -20,12 +20,27 @@ provides:
   evse_manager:
     interface: evse_manager
     description: This interface controls the charging port.
+  dc_external_derate:
+    interface: dc_external_derate
+    description: This interface provides the proxied DC external derating capabilities.
+  display_message:
+    interface: display_message
+    description: This interface allows to forward display messages to the remote side.
+  iso15118_extensions:
+    interface: iso15118_extensions
+    description: Forwards OCPP related ISO15118 stuff to the remote side.
+  ocpp_data_transfer:
+    interface: ocpp_data_transfer
+    description: This interface allows to forward customer OCPP stuff to the remote side.
   satellite:
     interface: satellite
     description: This interface provides information/control for the satellite connection.
   system:
     interface: system
     description: This interface provides a proxied system interface.
+  uk_random_delay:
+    interface: uk_random_delay
+    description: Forwards control over UK smart charging regulation random delay feature
 requires:
   auth:
     interface: auth

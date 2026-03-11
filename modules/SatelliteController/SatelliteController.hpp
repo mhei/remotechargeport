@@ -12,10 +12,15 @@
 
 // headers for provided interface implementations
 #include <generated/interfaces/auth_token_provider/Implementation.hpp>
+#include <generated/interfaces/dc_external_derate/Implementation.hpp>
+#include <generated/interfaces/display_message/Implementation.hpp>
 #include <generated/interfaces/energy/Implementation.hpp>
 #include <generated/interfaces/evse_manager/Implementation.hpp>
+#include <generated/interfaces/iso15118_extensions/Implementation.hpp>
+#include <generated/interfaces/ocpp_data_transfer/Implementation.hpp>
 #include <generated/interfaces/satellite/Implementation.hpp>
 #include <generated/interfaces/system/Implementation.hpp>
+#include <generated/interfaces/uk_random_delay/Implementation.hpp>
 
 // headers for required interface implementations
 #include <generated/interfaces/auth/Interface.hpp>
@@ -40,15 +45,24 @@ public:
     SatelliteController() = delete;
     SatelliteController(const ModuleInfo& info, std::unique_ptr<auth_token_providerImplBase> p_auth_token_provider,
                         std::unique_ptr<energyImplBase> p_energy, std::unique_ptr<evse_managerImplBase> p_evse_manager,
+                        std::unique_ptr<dc_external_derateImplBase> p_dc_external_derate,
+                        std::unique_ptr<display_messageImplBase> p_display_message,
+                        std::unique_ptr<iso15118_extensionsImplBase> p_iso15118_extensions,
+                        std::unique_ptr<ocpp_data_transferImplBase> p_ocpp_data_transfer,
                         std::unique_ptr<satelliteImplBase> p_satellite, std::unique_ptr<systemImplBase> p_system,
-                        std::unique_ptr<authIntf> r_auth, std::vector<std::unique_ptr<systemIntf>> r_system,
-                        Conf& config) :
+                        std::unique_ptr<uk_random_delayImplBase> p_uk_random_delay, std::unique_ptr<authIntf> r_auth,
+                        std::vector<std::unique_ptr<systemIntf>> r_system, Conf& config) :
         ModuleBase(info),
         p_auth_token_provider(std::move(p_auth_token_provider)),
         p_energy(std::move(p_energy)),
         p_evse_manager(std::move(p_evse_manager)),
+        p_dc_external_derate(std::move(p_dc_external_derate)),
+        p_display_message(std::move(p_display_message)),
+        p_iso15118_extensions(std::move(p_iso15118_extensions)),
+        p_ocpp_data_transfer(std::move(p_ocpp_data_transfer)),
         p_satellite(std::move(p_satellite)),
         p_system(std::move(p_system)),
+        p_uk_random_delay(std::move(p_uk_random_delay)),
         r_auth(std::move(r_auth)),
         r_system(std::move(r_system)),
         config(config){};
@@ -56,8 +70,13 @@ public:
     const std::unique_ptr<auth_token_providerImplBase> p_auth_token_provider;
     const std::unique_ptr<energyImplBase> p_energy;
     const std::unique_ptr<evse_managerImplBase> p_evse_manager;
+    const std::unique_ptr<dc_external_derateImplBase> p_dc_external_derate;
+    const std::unique_ptr<display_messageImplBase> p_display_message;
+    const std::unique_ptr<iso15118_extensionsImplBase> p_iso15118_extensions;
+    const std::unique_ptr<ocpp_data_transferImplBase> p_ocpp_data_transfer;
     const std::unique_ptr<satelliteImplBase> p_satellite;
     const std::unique_ptr<systemImplBase> p_system;
+    const std::unique_ptr<uk_random_delayImplBase> p_uk_random_delay;
     const std::unique_ptr<authIntf> r_auth;
     const std::vector<std::unique_ptr<systemIntf>> r_system;
     const Conf& config;
