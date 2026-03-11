@@ -89,11 +89,11 @@ void SatelliteAgent::init() {
     });
 
     this->r_evse_manager->subscribe_evse_id([&](std::string value) {
-         this->add_to_event_list("evse_manager", "evse_id", value);
+        this->add_to_event_list("evse_manager", "evse_id", value);
     });
 
     this->r_evse_manager->subscribe_hw_capabilities([&](types::evse_board_support::HardwareCapabilities value) {
-         this->add_to_event_list("evse_manager", "hw_capabilities", value);
+        this->add_to_event_list("evse_manager", "hw_capabilities", value);
     });
 
     this->r_evse_manager->subscribe_enforced_limits([&](types::energy::EnforcedLimits value) {
@@ -116,6 +116,30 @@ void SatelliteAgent::init() {
         this->add_to_event_list("evse_manager", "supported_energy_transfer_modes", value);
     });
 
+    if (not this->r_dc_external_derate.empty()) {
+        this->r_dc_external_derate[0]->subscribe_plug_temperature_C([&](double value) {
+            this->add_to_event_list("dc_external_derate", "plug_temperature_C", value);
+        });
+    }
+
+    if (not this->r_iso15118_extensions.empty()) {
+        this->r_iso15118_extensions[0]->subscribe_iso15118_certificate_request([&](types::iso15118::RequestExiStreamSchema value) {
+            this->add_to_event_list("iso15118_extensions", "iso15118_certificate_request", value);
+        });
+
+        this->r_iso15118_extensions[0]->subscribe_charging_needs([&](types::iso15118::ChargingNeeds value) {
+            this->add_to_event_list("iso15118_extensions", "charging_needs", value);
+        });
+
+        this->r_iso15118_extensions[0]->subscribe_ev_info([&](types::iso15118::EvInformation value) {
+            this->add_to_event_list("iso15118_extensions", "ev_info", value);
+        });
+
+        this->r_iso15118_extensions[0]->subscribe_service_renegotiation_supported([&](bool value) {
+            this->add_to_event_list("iso15118_extensions", "service_renegotiation_supported", value);
+        });
+    }
+
     if (not this->r_system.empty()) {
         this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
             this->add_to_event_list("system", "firmware_update_status", value);
@@ -123,6 +147,12 @@ void SatelliteAgent::init() {
 
         this->r_system[0]->subscribe_log_status([&](types::system::LogStatus value) {
             this->add_to_event_list("system", "log_status", value);
+        });
+    }
+
+    if (not this->r_uk_random_delay.empty()) {
+        this->r_uk_random_delay[0]->subscribe_countdown([&](types::uk_random_delay::CountDown value) {
+            this->add_to_event_list("uk_random_delay", "countdown", value);
         });
     }
 
@@ -330,6 +360,68 @@ void SatelliteAgent::init_rpc_binds() {
         return j.dump();
     });
 
+    this->rpc->bind("dc_external_derate_set_external_derating", [&](std::string& derate) {
+        if (this->r_dc_external_derate.empty())
+            return;
+
+        this->r_dc_external_derate[0]->call_set_external_derating(json::parse(derate));
+    });
+
+    this->rpc->bind("display_message_set_display_message", [&](std::string& request) {
+        if (this->r_display_message.empty()) {
+            types::display_message::SetDisplayMessageResponse rv;
+            rv.status = types::display_message::DisplayMessageStatusEnum::Rejected;
+            json j = rv;
+            return j.dump();
+        }
+
+        json j = this->r_display_message[0]->call_set_display_message(json::parse(request));
+        return j.dump();
+    });
+
+    this->rpc->bind("display_message_get_display_messages", [&](std::string& request) {
+        if (this->r_display_message.empty()) {
+            json j = {};
+            return j.dump();
+        }
+
+        json j = this->r_display_message[0]->call_get_display_messages(json::parse(request));
+        return j.dump();
+    });
+
+    this->rpc->bind("display_message_clear_display_message", [&](std::string& request) {
+        if (this->r_display_message.empty()) {
+            types::display_message::ClearDisplayMessageResponse rv;
+            rv.status = types::display_message::ClearMessageResponseEnum::Unknown;
+            json j = rv;
+            return j.dump();
+        }
+
+        json j = this->r_display_message[0]->call_clear_display_message(json::parse(request));
+        return j.dump();
+    });
+
+    this->rpc->bind("iso15118_extensions_set_get_certificate_response", [&](std::string& certificate_response) {
+        if (this->r_iso15118_extensions.empty())
+            return;
+
+        this->r_iso15118_extensions[0]->call_set_get_certificate_response(json::parse(certificate_response));
+    });
+
+    this->rpc->bind("ocpp_data_transfer_data_transfer", [&](std::string& request) {
+        json j;
+
+        if (not this->r_ocpp_data_transfer.empty()) {
+            j = this->r_ocpp_data_transfer[0]->call_data_transfer(json::parse(request));
+        } else {
+            types::ocpp::DataTransferResponse rv;
+            rv.status = types::ocpp::DataTransferStatus::Rejected;
+            j = rv;
+        }
+
+        return j.dump();
+    });
+
     this->rpc->bind("system_update_firmware", [&](std::string& firmware_update_request) {
         types::system::UpdateFirmwareResponse rv;
 
@@ -405,6 +497,34 @@ void SatelliteAgent::init_rpc_binds() {
         }
 
         return types::system::boot_reason_to_string(rv);
+    });
+
+    this->rpc->bind("uk_random_delay_enable", [&]() {
+        if (this->r_uk_random_delay.empty())
+            return;
+
+        this->r_uk_random_delay[0]->call_enable();
+    });
+
+    this->rpc->bind("uk_random_delay_disable", [&]() {
+        if (this->r_uk_random_delay.empty())
+            return;
+
+        this->r_uk_random_delay[0]->call_disable();
+    });
+
+    this->rpc->bind("uk_random_delay_cancel", [&]() {
+        if (this->r_uk_random_delay.empty())
+            return;
+
+        this->r_uk_random_delay[0]->call_cancel();
+    });
+
+    this->rpc->bind("uk_random_delay_set_duration_s", [&](int& value) {
+        if (this->r_uk_random_delay.empty())
+            return;
+
+        this->r_uk_random_delay[0]->call_set_duration_s(value);
     });
 
     this->rpc->bind("push_var", [&](std::string& json_s) {

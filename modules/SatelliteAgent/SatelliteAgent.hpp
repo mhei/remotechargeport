@@ -16,9 +16,14 @@
 
 // headers for required interface implementations
 #include <generated/interfaces/auth_token_provider/Interface.hpp>
+#include <generated/interfaces/dc_external_derate/Interface.hpp>
+#include <generated/interfaces/display_message/Interface.hpp>
 #include <generated/interfaces/energy/Interface.hpp>
 #include <generated/interfaces/evse_manager/Interface.hpp>
+#include <generated/interfaces/iso15118_extensions/Interface.hpp>
+#include <generated/interfaces/ocpp_data_transfer/Interface.hpp>
 #include <generated/interfaces/system/Interface.hpp>
+#include <generated/interfaces/uk_random_delay/Interface.hpp>
 
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 // insert your custom include headers here
@@ -46,14 +51,24 @@ public:
                    std::unique_ptr<systemImplBase> p_system,
                    std::vector<std::unique_ptr<auth_token_providerIntf>> r_auth_token_provider,
                    std::unique_ptr<energyIntf> r_energy, std::unique_ptr<evse_managerIntf> r_evse_manager,
-                   std::vector<std::unique_ptr<systemIntf>> r_system, Conf& config) :
+                   std::vector<std::unique_ptr<dc_external_derateIntf>> r_dc_external_derate,
+                   std::vector<std::unique_ptr<display_messageIntf>> r_display_message,
+                   std::vector<std::unique_ptr<iso15118_extensionsIntf>> r_iso15118_extensions,
+                   std::vector<std::unique_ptr<ocpp_data_transferIntf>> r_ocpp_data_transfer,
+                   std::vector<std::unique_ptr<systemIntf>> r_system,
+                   std::vector<std::unique_ptr<uk_random_delayIntf>> r_uk_random_delay, Conf& config) :
         ModuleBase(info),
         p_auth(std::move(p_auth)),
         p_system(std::move(p_system)),
         r_auth_token_provider(std::move(r_auth_token_provider)),
         r_energy(std::move(r_energy)),
         r_evse_manager(std::move(r_evse_manager)),
+        r_dc_external_derate(std::move(r_dc_external_derate)),
+        r_display_message(std::move(r_display_message)),
+        r_iso15118_extensions(std::move(r_iso15118_extensions)),
+        r_ocpp_data_transfer(std::move(r_ocpp_data_transfer)),
         r_system(std::move(r_system)),
+        r_uk_random_delay(std::move(r_uk_random_delay)),
         config(config){};
 
     const std::unique_ptr<authImplBase> p_auth;
@@ -61,7 +76,12 @@ public:
     const std::vector<std::unique_ptr<auth_token_providerIntf>> r_auth_token_provider;
     const std::unique_ptr<energyIntf> r_energy;
     const std::unique_ptr<evse_managerIntf> r_evse_manager;
+    const std::vector<std::unique_ptr<dc_external_derateIntf>> r_dc_external_derate;
+    const std::vector<std::unique_ptr<display_messageIntf>> r_display_message;
+    const std::vector<std::unique_ptr<iso15118_extensionsIntf>> r_iso15118_extensions;
+    const std::vector<std::unique_ptr<ocpp_data_transferIntf>> r_ocpp_data_transfer;
     const std::vector<std::unique_ptr<systemIntf>> r_system;
+    const std::vector<std::unique_ptr<uk_random_delayIntf>> r_uk_random_delay;
     const Conf& config;
 
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
