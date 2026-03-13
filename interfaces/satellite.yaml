@@ -26,5 +26,4 @@ errors:
   - reference: /errors/isolation_monitor
   - reference: /errors/over_voltage_monitor
   - reference: /errors/power_supply_DC
-  - reference: /errors/powermeter
   - reference: /errors/system
