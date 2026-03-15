@@ -45,6 +45,10 @@ requires:
     interface: ocpp_data_transfer
     min_connections: 0
     max_connections: 1
+  rfid_token_provider:
+    interface: auth_token_provider
+    min_connections: 0
+    max_connections: 1
   system:
     interface: system
     min_connections: 0

@@ -140,6 +140,12 @@ void SatelliteAgent::init() {
         });
     }
 
+    if (not this->r_rfid_token_provider.empty()) {
+        this->r_rfid_token_provider[0]->subscribe_provided_token([&](types::authorization::ProvidedIdToken value) {
+            this->add_to_event_list("rfid_token_provider", "provided_token", value);
+        });
+    }
+
     if (not this->r_system.empty()) {
         this->r_system[0]->subscribe_firmware_update_status([&](types::system::FirmwareUpdateStatus value) {
             this->add_to_event_list("system", "firmware_update_status", value);

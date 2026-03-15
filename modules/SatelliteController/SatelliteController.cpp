@@ -31,6 +31,7 @@ void SatelliteController::init() {
     invoke_init(*p_display_message);
     invoke_init(*p_iso15118_extensions);
     invoke_init(*p_ocpp_data_transfer);
+    invoke_init(*p_rfid_token_provider);
     invoke_init(*p_satellite);
     invoke_init(*p_system);
     invoke_init(*p_uk_random_delay);
@@ -114,6 +115,7 @@ void SatelliteController::ready() {
     invoke_ready(*p_display_message);
     invoke_ready(*p_iso15118_extensions);
     invoke_ready(*p_ocpp_data_transfer);
+    invoke_ready(*p_rfid_token_provider);
     invoke_ready(*p_satellite);
     invoke_ready(*p_system);
     invoke_ready(*p_uk_random_delay);
@@ -129,8 +131,9 @@ void SatelliteController::ready() {
 
         for (auto& event : j["vars"]) {
             if (event["interface"] == "auth_token_provider") {
-                if (event["var"] == "provided_token")
-                   this->p_auth_token_provider->publish_provided_token(event["value"]);
+                if (event["var"] == "provided_token") {
+                    this->p_auth_token_provider->publish_provided_token(event["value"]);
+                }
             }
             if (event["interface"] == "energy") {
                 if (event["var"] == "energy_flow_request")
@@ -179,6 +182,29 @@ void SatelliteController::ready() {
                     this->p_iso15118_extensions->publish_ev_info(event["value"]);
                 else if (event["var"] == "service_renegotiation_supported")
                     this->p_iso15118_extensions->publish_service_renegotiation_supported(event["value"]);
+            }
+            if (event["interface"] == "rfid_token_provider") {
+                if (event["var"] == "provided_token") {
+                    types::authorization::ProvidedIdToken id_token = event["value"];
+
+                    // return either the mapping of the implementation or of the module
+                    auto mapping = this->p_rfid_token_provider->get_mapping();
+                    if (!mapping.has_value()) {
+                        mapping = this->info.mapping;
+                    }
+
+                    // prefer a set connector id, fallback to evse id (which is usually the same value)
+                    if (mapping.has_value()) {
+                        auto connector_id = mapping.value().connector.value_or(mapping.value().evse);
+
+                        // do not overwrite an existing list of connectors
+                        if (!id_token.connectors.has_value()) {
+                            id_token.connectors.emplace({connector_id});
+                        }
+                    }
+
+                    this->p_rfid_token_provider->publish_provided_token(id_token);
+                }
             }
             if (event["interface"] == "system") {
                 if (event["var"] == "firmware_update_status")

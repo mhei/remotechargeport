@@ -32,6 +32,7 @@ target_sources(${MODULE_NAME}
         "display_message/display_messageImpl.cpp"
         "iso15118_extensions/iso15118_extensionsImpl.cpp"
         "ocpp_data_transfer/ocpp_data_transferImpl.cpp"
+        "rfid_token_provider/auth_token_providerImpl.cpp"
         "satellite/satelliteImpl.cpp"
         "system/systemImpl.cpp"
         "uk_random_delay/uk_random_delayImpl.cpp"

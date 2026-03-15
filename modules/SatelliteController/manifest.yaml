@@ -32,6 +32,13 @@ provides:
   ocpp_data_transfer:
     interface: ocpp_data_transfer
     description: This interface allows to forward customer OCPP stuff to the remote side.
+  rfid_token_provider:
+    interface: auth_token_provider
+    description: >-
+      Use this interface for an RFID token provider on the remote side. The difference to the
+      auth_token_provider interface above is, that here the provided id tokens are limited
+      to the configured connector id if the incoming token does not yet include such an
+      information. The connector id is derived from the module/interface mapping.
   satellite:
     interface: satellite
     description: This interface provides information/control for the satellite connection.

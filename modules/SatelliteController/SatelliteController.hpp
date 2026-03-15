@@ -49,6 +49,7 @@ public:
                         std::unique_ptr<display_messageImplBase> p_display_message,
                         std::unique_ptr<iso15118_extensionsImplBase> p_iso15118_extensions,
                         std::unique_ptr<ocpp_data_transferImplBase> p_ocpp_data_transfer,
+                        std::unique_ptr<auth_token_providerImplBase> p_rfid_token_provider,
                         std::unique_ptr<satelliteImplBase> p_satellite, std::unique_ptr<systemImplBase> p_system,
                         std::unique_ptr<uk_random_delayImplBase> p_uk_random_delay, std::unique_ptr<authIntf> r_auth,
                         std::vector<std::unique_ptr<systemIntf>> r_system, Conf& config) :
@@ -60,6 +61,7 @@ public:
         p_display_message(std::move(p_display_message)),
         p_iso15118_extensions(std::move(p_iso15118_extensions)),
         p_ocpp_data_transfer(std::move(p_ocpp_data_transfer)),
+        p_rfid_token_provider(std::move(p_rfid_token_provider)),
         p_satellite(std::move(p_satellite)),
         p_system(std::move(p_system)),
         p_uk_random_delay(std::move(p_uk_random_delay)),
@@ -74,6 +76,7 @@ public:
     const std::unique_ptr<display_messageImplBase> p_display_message;
     const std::unique_ptr<iso15118_extensionsImplBase> p_iso15118_extensions;
     const std::unique_ptr<ocpp_data_transferImplBase> p_ocpp_data_transfer;
+    const std::unique_ptr<auth_token_providerImplBase> p_rfid_token_provider;
     const std::unique_ptr<satelliteImplBase> p_satellite;
     const std::unique_ptr<systemImplBase> p_system;
     const std::unique_ptr<uk_random_delayImplBase> p_uk_random_delay;

@@ -55,6 +55,7 @@ public:
                    std::vector<std::unique_ptr<display_messageIntf>> r_display_message,
                    std::vector<std::unique_ptr<iso15118_extensionsIntf>> r_iso15118_extensions,
                    std::vector<std::unique_ptr<ocpp_data_transferIntf>> r_ocpp_data_transfer,
+                   std::vector<std::unique_ptr<auth_token_providerIntf>> r_rfid_token_provider,
                    std::vector<std::unique_ptr<systemIntf>> r_system,
                    std::vector<std::unique_ptr<uk_random_delayIntf>> r_uk_random_delay, Conf& config) :
         ModuleBase(info),
@@ -67,6 +68,7 @@ public:
         r_display_message(std::move(r_display_message)),
         r_iso15118_extensions(std::move(r_iso15118_extensions)),
         r_ocpp_data_transfer(std::move(r_ocpp_data_transfer)),
+        r_rfid_token_provider(std::move(r_rfid_token_provider)),
         r_system(std::move(r_system)),
         r_uk_random_delay(std::move(r_uk_random_delay)),
         config(config){};
@@ -80,6 +82,7 @@ public:
     const std::vector<std::unique_ptr<display_messageIntf>> r_display_message;
     const std::vector<std::unique_ptr<iso15118_extensionsIntf>> r_iso15118_extensions;
     const std::vector<std::unique_ptr<ocpp_data_transferIntf>> r_ocpp_data_transfer;
+    const std::vector<std::unique_ptr<auth_token_providerIntf>> r_rfid_token_provider;
     const std::vector<std::unique_ptr<systemIntf>> r_system;
     const std::vector<std::unique_ptr<uk_random_delayIntf>> r_uk_random_delay;
     const Conf& config;
