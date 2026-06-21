@@ -158,6 +158,7 @@ And a small note: the second version number has a leading zero here so that it s
 
 | Tag       | EVerest release               |
 |-----------|-------------------------------|
+| 2026.02.1 | 2025.02.0                     |
 | 2026.02.0 | 2025.02.0                     |
 | 2025.10.0 | 2025.12.0 <br> 2025.10.0 <br> 2025.9.0  |
 | 2025.09.0 | 2025.12.0 <br> 2025.10.0 <br> 2025.9.0  |
