@@ -43,6 +43,7 @@ target_sources(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME}
     PRIVATE
+        everest::io
         rpclib::rpc
 )
 

@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
+#include "SatelliteAgent.hpp"
+#include "configuration.h"
+#include <algorithm>
+#include <array>
+#include <baptismdata/baptismdata.h>
+#include <cctype>
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
+#include <everest/io/event/fd_event_sync_interface.hpp>
+#include <everest/io/socket/socket.hpp>
 #include <memory>
 #include <mutex>
-#include <string>
-#include <thread>
-#include "configuration.h"
-#include "SatelliteAgent.hpp"
+#include <nlohmann/json.hpp>
 #include <rpc/server.h>
 #include <rpc/this_server.h>
 #include <rpc/this_session.h>
-#include <nlohmann/json.hpp>
+#include <string>
+#include <thread>
+#include <unistd.h>
 #include <utils/error/error_json.hpp>
 
 using namespace std::chrono_literals;
@@ -20,11 +27,16 @@ using nlohmann::json;
 
 namespace module {
 
+SatelliteAgent::~SatelliteAgent() {
+    this->stop_mdns_announcement();
+}
+
 void SatelliteAgent::init() {
     invoke_init(*p_auth);
     invoke_init(*p_system);
 
     EVLOG_info << MODULE_DESCRIPTION << " (version: " << PROJECT_VERSION << ")";
+    this->load_board_serial();
 
     // to queue received error events
     this->error_event_list = json::array();
@@ -240,6 +252,7 @@ void SatelliteAgent::init() {
 
     // run the RPC server
     this->rpc->async_run();
+    this->start_mdns_announcement();
 
     // we wait until the peer connected and plays our protocol before we register the
     // real worker callbacks; this is to ensure that we cannot modify our internal state
@@ -573,11 +586,180 @@ void SatelliteAgent::init_rpc_binds() {
 }
 
 void SatelliteAgent::trigger_reset() {
+    this->stop_mdns_announcement();
+
     if (not this->r_system.empty()) {
         this->r_system[0]->call_reset(types::system::ResetType::Soft, false);
     } else {
         std::exit(EXIT_FAILURE);
     }
+}
+
+void SatelliteAgent::start_mdns_announcement() {
+    using everest::lib::io::event::sync_status;
+    using everest::lib::io::socket::get_all_interaces;
+    using everest::lib::io::socket::if_info;
+    using mdns_client = everest::lib::io::mdns::mdns_client;
+
+    std::vector<if_info> interfaces;
+    try {
+        interfaces = get_all_interaces();
+    } catch (const std::exception& e) {
+        EVLOG_warning << "Failed to enumerate mDNS interfaces: " << e.what();
+        return;
+    }
+
+    auto const service_type = this->get_mdns_service_type();
+    auto const service_query_name = service_type + ".local";
+    this->mdns_stop_requested = false;
+
+    for (auto const& interface : interfaces) {
+        if (interface.ipv4.empty() || interface.ipv4.rfind("127.", 0) == 0) {
+            continue;
+        }
+        if (interface.name.find("fallback") != std::string::npos) {
+            continue;
+        }
+
+        try {
+            MdnsAnnouncer announcer;
+            announcer.interface = interface.name;
+            announcer.ip = interface.ipv4;
+            announcer.client = std::make_unique<mdns_client>(interface.name);
+
+            auto const service = this->create_mdns_service(interface.ipv4);
+            auto* const client = announcer.client.get();
+
+            client->set_on_ready_action([client, service, service_type, interface_name = interface.name]() {
+                auto const& raw = client->get_raw_handler();
+                if (raw) {
+                    EVLOG_info << "mDNS announcement on interface '" << interface_name << "'";
+                    raw->announce(service, service_type);
+                }
+            });
+
+            client->set_rx_handler([client, service, service_type, service_query_name](auto const& data, auto&) {
+                // Accept both the raw service type and the fully qualified query name.
+                if (everest::lib::io::mdns::is_query_for(data.buffer, service_type) ||
+                    everest::lib::io::mdns::is_query_for(data.buffer, service_query_name)) {
+                    auto const& raw = client->get_raw_handler();
+                    if (raw) {
+                        raw->announce(service, service_type);
+                    }
+                }
+            });
+
+            announcer.worker = std::thread([this, client, service, service_type, interface_name = interface.name]() {
+                while (not this->mdns_stop_requested.load()) {
+                    auto const status = client->sync(1s);
+                    if (status == sync_status::error && not this->mdns_stop_requested.load()) {
+                        EVLOG_warning << "mDNS listener on interface '" << interface_name << "' returned an error.";
+                    }
+                }
+            });
+
+            EVLOG_info << "Announcing SatelliteAgent RPC service via mDNS on interface " << interface.name << " ("
+                       << interface.ipv4 << ":" << this->config.port << ").";
+            this->mdns_announcers.push_back(std::move(announcer));
+        } catch (const std::exception& e) {
+            EVLOG_warning << "Failed to start mDNS announcement on interface '" << interface.name << "': " << e.what();
+        }
+    }
+
+    if (this->mdns_announcers.empty()) {
+        EVLOG_warning << "No suitable interface could be found/initialized for mDNS announcements.";
+    }
+}
+
+void SatelliteAgent::stop_mdns_announcement() {
+    this->mdns_stop_requested = true;
+
+    for (auto& announcer : this->mdns_announcers) {
+        if (announcer.worker.joinable()) {
+            announcer.worker.join();
+        }
+    }
+
+    this->mdns_announcers.clear();
+}
+
+void SatelliteAgent::load_board_serial() {
+    struct baptismdata_ctx* ctx = nullptr;
+    auto const open_result = baptismdata_open(&ctx);
+    if (open_result != 0 || ctx == nullptr) {
+        EVLOG_warning << "Failed to open baptism data: " << open_result;
+        return;
+    }
+
+    char* value = baptismdata_get_var(ctx, "serial#");
+    if (value == nullptr) {
+        EVLOG_warning << "Baptism data key 'serial#' is not available.";
+        goto free_out;
+    }
+
+    this->board_serial = value;
+
+free_out:
+    std::free(value);
+    baptismdata_close(ctx);
+}
+
+std::string SatelliteAgent::get_mdns_service_type() const {
+    return "_everest-satellite-rpc._tcp";
+}
+
+std::string SatelliteAgent::get_mdns_hostname() const {
+    std::array<char, 256> hostname{};
+
+    if (gethostname(hostname.data(), hostname.size()) == 0) {
+        hostname.back() = '\0';
+        return hostname.data();
+    }
+
+    // should never happen
+    return "satellite-agent";
+}
+
+everest::lib::io::mdns::mDNS_discovery SatelliteAgent::create_mdns_service(std::string const& ip) const {
+    std::string instance = "EVerest SatelliteAgent";
+    everest::lib::io::mdns::mDNS_discovery service;
+    service.ip = ip;
+    service.port = static_cast<std::uint16_t>(this->config.port);
+    service.hostname = this->get_mdns_hostname();
+    if (not this->board_serial.empty()) {
+        service.add_string("serial", this->board_serial);
+        instance += " [" + this->board_serial + "]";
+    }
+    service.add_string("version", PROJECT_VERSION);
+    service.service_instance = instance + "." + this->get_mdns_service_type() + ".local";
+    return service;
+}
+
+std::string SatelliteAgent::sanitize_mdns_label(std::string label) const {
+    auto const dot = label.find('.');
+    if (dot != std::string::npos) {
+        label.resize(dot);
+    }
+
+    std::transform(label.begin(), label.end(), label.begin(), [](unsigned char c) {
+        if (std::isalnum(c) != 0) {
+            return static_cast<char>(std::tolower(c));
+        }
+        if (c == '-') {
+            return static_cast<char>(c);
+        }
+        return '-';
+    });
+
+    while (not label.empty() && label.front() == '-') {
+        label.erase(label.begin());
+    }
+
+    while (not label.empty() && label.back() == '-') {
+        label.pop_back();
+    }
+
+    return label;
 }
 
 } // namespace module

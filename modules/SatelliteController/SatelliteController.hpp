@@ -29,8 +29,14 @@
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 // insert your custom include headers here
 #include <atomic>
+#include <condition_variable>
+#include <everest/io/mdns/mdns.hpp>
+#include <everest/io/mdns/mdns_client.hpp>
 #include <memory>
+#include <mutex>
 #include <rpc/client.h>
+#include <string>
+#include <vector>
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
 
 namespace module {
@@ -38,6 +44,7 @@ namespace module {
 struct Conf {
     std::string hostname;
     int port;
+    std::string remote_serial;
 };
 
 class SatelliteController : public Everest::ModuleBase {
@@ -93,6 +100,14 @@ public:
 
     /// @brief Used to remember whether a (possible) disconnect in the future is expected.
     std::atomic_bool disconnect_expected{false};
+
+    /// @brief The hostname to connect to. Either derived via static config, or via
+    ///        mDNS discovery.
+    std::string connected_hostname;
+
+    /// @brief The remote's port to connect to. Either derived via static config, or via
+    ///        mDNS discovery.
+    int connected_port{0};
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
 
 protected:
@@ -107,6 +122,22 @@ private:
 
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
     // insert your private definitions here
+    struct SatelliteEndpoint {
+        std::string hostname;
+        int port;
+    };
+
+    /// @brief Helper to configure the endpoint via static config or mDNS.
+    SatelliteEndpoint resolve_satellite_endpoint();
+
+    /// @brief Helper to search for a our desired endpoint via mDNS.
+    SatelliteEndpoint resolve_satellite_endpoint_via_mdns();
+
+    /// @brief Helper to match the expected mDNS TXT record
+    static bool mdns_match_serial(const everest::lib::io::mdns::mDNS_discovery& discovery, const std::string& serial);
+
+    /// @brief Helper to handle the '.local' domain part.
+    static std::string normalize_mdns_hostname(std::string hostname);
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
 };
 
