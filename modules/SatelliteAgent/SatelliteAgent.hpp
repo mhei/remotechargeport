@@ -29,11 +29,15 @@
 // insert your custom include headers here
 #include <atomic>
 #include <condition_variable>
+#include <everest/io/mdns/mdns.hpp>
+#include <everest/io/mdns/mdns_client.hpp>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <rpc/server.h>
 #include <string>
+#include <thread>
+#include <vector>
 
 using json = nlohmann::json;
 // ev@4bf81b14-a215-475c-a1d3-0a484ae48918:v1
@@ -72,6 +76,7 @@ public:
         r_system(std::move(r_system)),
         r_uk_random_delay(std::move(r_uk_random_delay)),
         config(config){};
+    ~SatelliteAgent();
 
     const std::unique_ptr<authImplBase> p_auth;
     const std::unique_ptr<systemImplBase> p_system;
@@ -92,6 +97,13 @@ public:
 
     /// @brief Handle of an RPC server object, listing for incoming RPC connections.
     std::unique_ptr<rpc::server> rpc;
+
+    struct MdnsAnnouncer {
+        std::string interface;
+        std::string ip;
+        std::unique_ptr<everest::lib::io::mdns::mdns_client> client;
+        std::thread worker;
+    };
     // ev@1fce4c5e-0ab8-41bb-90f7-14277703d2ac:v1
 
 protected:
@@ -161,6 +173,30 @@ private:
     void init_rpc_binds();
     /// @brief Helper to initiate a reset.
     void trigger_reset();
+
+    /// @brief Helper to get the board serial via libbaptismdata
+    void load_board_serial();
+
+    /// @brief (Cached) Serial number of the board.
+    std::string board_serial;
+
+    /// @brief Helper to signal mDNS announcement stop request
+    std::atomic_bool mdns_stop_requested{false};
+
+    /// @brief Track of all mDNS announcers
+    std::vector<MdnsAnnouncer> mdns_announcers;
+
+    /// @brief Helper to start the mDNS announcements.
+    void start_mdns_announcement();
+
+    /// @brief Helper to stop the mDNS announcements.
+    void stop_mdns_announcement();
+
+    /// @brief Various helpers
+    std::string get_mdns_service_type() const;
+    std::string get_mdns_hostname() const;
+    std::string sanitize_mdns_label(std::string label) const;
+    everest::lib::io::mdns::mDNS_discovery create_mdns_service(std::string const& ip) const;
     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
 };
 

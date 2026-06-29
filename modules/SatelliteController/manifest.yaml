@@ -2,14 +2,28 @@ description: >-
   Remote connection to a satellite instance - client (aka controller) side.
 config:
   hostname:
-    description: The remote agent's hostname to connect to.
+    description: >-
+      The remote agent's hostname or IP to connect to.
+      When not used, the following `remote_serial` must be given which
+      is then used to find the remote agent via mDNS discovery.
     type: string
+    default: ""
   port:
-    description: The remote agent's port number to connect to.
+    description: >-
+      The remote agent's port number to connect to.
+      This port is only used when the remote is not discovered via mDNS.
     type: integer
     minimum: 1
     maximum: 65535
     default: 4129
+  remote_serial:
+    description: >-
+      The remote agent's board serial number as obtained via baptism
+      data key 'serial#'.
+      This serial number is used for remote discovery via mDNS TXT record.
+      Note: It must be given as string, so quote the value properly.
+    type: string
+    default: ""
 provides:
   auth_token_provider:
     interface: auth_token_provider

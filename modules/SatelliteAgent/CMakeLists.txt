@@ -17,6 +17,9 @@ configure_file(configuration.h.in configuration.h @ONLY)
 # create a VERSION file
 configure_file(VERSION.in VERSION @ONLY)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(libbaptismdata REQUIRED IMPORTED_TARGET libbaptismdata)
+
 target_include_directories(${MODULE_NAME}
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
@@ -34,6 +37,8 @@ target_sources(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME}
     PRIVATE
+        everest::io
+        PkgConfig::libbaptismdata
         rpclib::rpc
 )
 

@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
-#include <chrono>
-#include <cstdlib>
-#include <memory>
-#include <string>
-#include <thread>
-#include "configuration.h"
 #include "SatelliteController.hpp"
+#include "configuration.h"
+#include <chrono>
+#include <condition_variable>
+#include <cstdlib>
+#include <everest/io/socket/socket.hpp>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
 #include <rpc/client.h>
 #include <rpc/rpc_error.h>
-#include <nlohmann/json.hpp>
+#include <string>
+#include <thread>
 #include <utils/error/error_json.hpp>
 
 using json = nlohmann::json;
@@ -19,7 +22,7 @@ namespace module {
 
 SatelliteController::~SatelliteController() {
     // if still connected, tell the peer that we are quitting now
-    if (this->rpc->get_connection_state() == rpc::client::connection_state::connected)
+    if (this->rpc && this->rpc->get_connection_state() == rpc::client::connection_state::connected)
         this->rpc->call("exit");
 }
 
@@ -71,13 +74,18 @@ void SatelliteController::init() {
     //
     // we need a two step approach here to handle cases when satellite and ourself lost synchronization
     //
-    EVLOG_info << "Connecting to SatelliteAgent on " << this->config.hostname << ":" << this->config.port << "...";
+    auto endpoint = this->resolve_satellite_endpoint();
+    this->connected_hostname = endpoint.hostname;
+    this->connected_port = endpoint.port;
+
+    EVLOG_info << "Connecting to SatelliteAgent on " << this->connected_hostname << ":" << this->connected_port
+               << "...";
     bool i_am_here_rv{true};
 
     do {
         // assigning this variable should call the destructor of previous instance if already set -> closes connection
         try {
-            this->rpc = std::make_unique<rpc::client>(this->config.hostname, this->config.port);
+            this->rpc = std::make_unique<rpc::client>(this->connected_hostname, this->connected_port);
 
             // then next RPC calls should not take longer than this timeout
             std::chrono::milliseconds timeout{5s};
@@ -234,12 +242,159 @@ void SatelliteController::ready() {
         std::this_thread::sleep_for(25ms);
     }
 
-    EVLOG_info << "Connection to SatelliteAgent on " << this->config.hostname << ":" << this->config.port << " lost. Terminating...";
+    EVLOG_info << "Connection to SatelliteAgent on " << this->connected_hostname << ":" << this->connected_port
+               << " lost. Terminating...";
 
     if (not this->disconnect_expected) {
         EVLOG_warning << "...and since this was not expected, we terminate the whole EVerest.";
         std::exit(1);
     }
+}
+
+SatelliteController::SatelliteEndpoint SatelliteController::resolve_satellite_endpoint() {
+    if (this->config.remote_serial.empty()) {
+        return SatelliteEndpoint{this->config.hostname, this->config.port};
+    }
+
+    return this->resolve_satellite_endpoint_via_mdns();
+}
+
+SatelliteController::SatelliteEndpoint SatelliteController::resolve_satellite_endpoint_via_mdns() {
+    using everest::lib::io::mdns::mdns_client;
+    using everest::lib::io::mdns::mDNS_discovery;
+    using everest::lib::io::socket::get_all_interaces;
+    using everest::lib::io::socket::if_info;
+
+    auto const service_type = std::string("_everest-satellite-rpc._tcp");
+    auto const service_query_name = service_type + ".local";
+    auto const expected_serial = this->config.remote_serial;
+
+    std::vector<if_info> interfaces = get_all_interaces();
+    std::mutex discovery_mutex;
+    std::condition_variable discovery_cv;
+    bool found = false;
+    SatelliteEndpoint endpoint{};
+
+    std::vector<std::unique_ptr<mdns_client>> clients;
+
+    for (auto const& interface : interfaces) {
+        if (interface.ipv4.empty() || interface.ipv4.rfind("127.", 0) == 0) {
+            continue;
+        }
+        if (interface.name.find("fallback") != std::string::npos) {
+            continue;
+        }
+
+        try {
+            auto client = std::make_unique<mdns_client>(interface.name);
+            auto* const raw_client = client.get();
+
+            client->set_on_ready_action([raw_client, service_query_name]() {
+                auto const& raw = raw_client->get_raw_handler();
+                if (raw) {
+                    raw->query(service_query_name);
+                }
+            });
+
+            client->set_rx_handler(
+                [&discovery_mutex, &discovery_cv, &endpoint, &found, expected_serial](auto const& data, auto&) {
+                    auto discovery = everest::lib::io::mdns::parse_mdns_packet(data.buffer);
+                    if (not discovery.has_value() ||
+                        not SatelliteController::mdns_match_serial(discovery.value(), expected_serial)) {
+                        return;
+                    }
+
+                    auto hostname = SatelliteController::normalize_mdns_hostname(discovery->hostname);
+                    if (hostname.empty() || discovery->port == 0) {
+                        return;
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> lock(discovery_mutex);
+                        if (found) {
+                            return;
+                        }
+                        endpoint.hostname = hostname;
+                        endpoint.port = static_cast<int>(discovery->port);
+                        found = true;
+                    }
+
+                    discovery_cv.notify_all();
+                });
+
+            clients.push_back(std::move(client));
+        } catch (const std::exception& e) {
+            EVLOG_warning << "Failed to initialize mDNS discovery on interface '" << interface.name
+                          << "': " << e.what();
+        }
+    }
+
+    if (clients.empty()) {
+        throw std::runtime_error("No usable network interface available for remote satellite mDNS discovery");
+    }
+
+    EVLOG_info << "Searching remote SatelliteAgent via mDNS for serial '" << expected_serial << "'...";
+
+    auto next_query = std::chrono::steady_clock::now();
+    while (true) {
+        {
+            std::unique_lock<std::mutex> lock(discovery_mutex);
+            if (found) {
+                break;
+            }
+        }
+
+        auto const now = std::chrono::steady_clock::now();
+        if (now >= next_query) {
+            for (auto& client : clients) {
+                auto const& raw = client->get_raw_handler();
+                if (raw) {
+                    raw->query(service_query_name);
+                }
+            }
+            next_query = now + 1s;
+        }
+
+        for (auto& client : clients) {
+            client->sync(100ms);
+        }
+
+        std::unique_lock<std::mutex> lock(discovery_mutex);
+        if (discovery_cv.wait_for(lock, 0ms, [&found]() { return found; })) {
+            break;
+        }
+    }
+
+    EVLOG_info << "Resolved remote SatelliteAgent serial '" << expected_serial << "' to " << endpoint.hostname << ":"
+               << endpoint.port << ".";
+    return endpoint;
+}
+
+bool SatelliteController::mdns_match_serial(const everest::lib::io::mdns::mDNS_discovery& discovery,
+                                            const std::string& serial) {
+    // special case: serial is empty string -> then use first found
+    // this should simplify configuration of dual chargers with a dedicated
+    // network between both sides
+    if (serial.empty())
+        return true;
+
+    // otherwise check for matching TXT record
+    auto const it = discovery.txt.find("serial");
+    return it != discovery.txt.end() && it->second == serial;
+}
+
+std::string SatelliteController::normalize_mdns_hostname(std::string hostname) {
+    if (hostname.empty()) {
+        return {};
+    }
+
+    auto const local_suffix = std::string(".local");
+    if (hostname.size() > local_suffix.size() &&
+        hostname.compare(hostname.size() - local_suffix.size(), local_suffix.size(), local_suffix) == 0) {
+        return hostname;
+    }
+
+    return hostname + ".local";
 }
 
 } // namespace module
