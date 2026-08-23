@@ -335,5 +335,12 @@ types::system::BootReason systemImpl::handle_get_boot_reason() {
     return this->mod->r_system[0]->call_get_boot_reason();
 }
 
+types::network::ConfigureNetworkResponse
+systemImpl::handle_configure_network(types::network::ConfigureNetworkRequest& request) {
+    // assuming that it is currently only used for APN and or VPN configuration
+    // and that our remotes do not need it -> just use the first system for now
+    return this->mod->r_system[0]->call_configure_network(request);
+}
+
 } // namespace system
 } // namespace module

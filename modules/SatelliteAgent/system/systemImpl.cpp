@@ -46,5 +46,11 @@ types::system::BootReason systemImpl::handle_get_boot_reason() {
     return types::system::BootReason::Unknown;
 }
 
+types::network::ConfigureNetworkResponse
+systemImpl::handle_configure_network(types::network::ConfigureNetworkRequest& request) {
+    (void)request;
+    return {types::network::ConfigureNetworkStatusEnum::NotSupported, std::nullopt};
+}
+
 } // namespace system
 } // namespace module

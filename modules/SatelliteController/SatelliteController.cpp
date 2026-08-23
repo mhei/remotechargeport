@@ -142,6 +142,8 @@ void SatelliteController::ready() {
             if (event["interface"] == "evse_manager") {
                 if (event["var"] == "session_event")
                     this->p_evse_manager->publish_session_event(event["value"]);
+                else if (event["var"] == "hlc_session_failed")
+                    this->p_evse_manager->publish_hlc_session_failed(event["value"]);
                 else if (event["var"] == "limits")
                     this->p_evse_manager->publish_limits(event["value"]);
                 else if (event["var"] == "ev_info")
@@ -211,6 +213,8 @@ void SatelliteController::ready() {
                    this->p_system->publish_firmware_update_status(event["value"]);
                 else if (event["var"] == "log_status")
                    this->p_system->publish_log_status(event["value"]);
+                else if (event["var"] == "configure_network_status")
+                   this->p_system->publish_configure_network_status(event["value"]);
             }
             if (event["interface"] == "uk_random_delay") {
                 if (event["var"] == "countdown")

@@ -84,5 +84,10 @@ evse_managerImpl::handle_update_allowed_energy_transfer_modes(
     return rv;
 }
 
+types::evse_manager::SetDerAvailableResult evse_managerImpl::handle_set_der_available(bool& available) {
+    json rv = json::parse(this->mod->rpc->call("evse_set_der_available", available).as<std::string>());
+    return rv;
+}
+
 } // namespace evse_manager
 } // namespace module

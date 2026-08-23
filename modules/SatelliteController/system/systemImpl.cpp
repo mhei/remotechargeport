@@ -70,5 +70,14 @@ types::system::BootReason systemImpl::handle_get_boot_reason() {
     return types::system::string_to_boot_reason(rv);
 }
 
+types::network::ConfigureNetworkResponse
+systemImpl::handle_configure_network(types::network::ConfigureNetworkRequest& request) {
+    json j = request;
+
+    j = json::parse(this->mod->rpc->call("system_configure_network", j.dump()).as<std::string>());
+
+    return j;
+}
+
 } // namespace system
 } // namespace module

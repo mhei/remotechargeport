@@ -64,6 +64,10 @@ void SatelliteAgent::init() {
         this->add_to_event_list("evse_manager", "session_event", value);
     });
 
+    this->r_evse_manager->subscribe_hlc_session_failed([&](types::evse_manager::HlcSessionFailedEvent value) {
+        this->add_to_event_list("evse_manager", "hlc_session_failed", value);
+    });
+
     this->r_evse_manager->subscribe_limits([&](types::evse_manager::Limits value) {
         this->add_to_event_list("evse_manager", "limits", value);
     });
@@ -153,6 +157,10 @@ void SatelliteAgent::init() {
 
         this->r_system[0]->subscribe_log_status([&](types::system::LogStatus value) {
             this->add_to_event_list("system", "log_status", value);
+        });
+
+        this->r_system[0]->subscribe_configure_network_status([&](const types::network::ConfigureNetworkStatus& value) {
+            this->add_to_event_list("system", "configure_network_status", value);
         });
     }
 
@@ -363,6 +371,11 @@ void SatelliteAgent::init_rpc_binds() {
 
     this->rpc->bind("evse_manager_update_allowed_energy_transfer_modes", [&](std::string& allowed_energy_transfer_modes) {
         json j = this->r_evse_manager->call_update_allowed_energy_transfer_modes(json::parse(allowed_energy_transfer_modes));
+        return j.dump();
+    });
+
+    this->rpc->bind("evse_set_der_available", [&](bool& available) {
+        json j = this->r_evse_manager->call_set_der_available(available);
         return j.dump();
     });
 
