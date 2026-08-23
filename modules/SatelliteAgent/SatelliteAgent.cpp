@@ -610,13 +610,13 @@ void SatelliteAgent::trigger_reset() {
 
 void SatelliteAgent::start_mdns_announcement() {
     using everest::lib::io::event::sync_status;
-    using everest::lib::io::socket::get_all_interaces;
+    using everest::lib::io::socket::get_all_interfaces;
     using everest::lib::io::socket::if_info;
     using mdns_client = everest::lib::io::mdns::mdns_client;
 
     std::vector<if_info> interfaces;
     try {
-        interfaces = get_all_interaces();
+        interfaces = get_all_interfaces();
     } catch (const std::exception& e) {
         EVLOG_warning << "Failed to enumerate mDNS interfaces: " << e.what();
         return;

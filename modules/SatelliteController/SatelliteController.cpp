@@ -262,14 +262,14 @@ SatelliteController::SatelliteEndpoint SatelliteController::resolve_satellite_en
 SatelliteController::SatelliteEndpoint SatelliteController::resolve_satellite_endpoint_via_mdns() {
     using everest::lib::io::mdns::mdns_client;
     using everest::lib::io::mdns::mDNS_discovery;
-    using everest::lib::io::socket::get_all_interaces;
+    using everest::lib::io::socket::get_all_interfaces;
     using everest::lib::io::socket::if_info;
 
     auto const service_type = std::string("_everest-satellite-rpc._tcp");
     auto const service_query_name = service_type + ".local";
     auto const expected_serial = this->config.remote_serial;
 
-    std::vector<if_info> interfaces = get_all_interaces();
+    std::vector<if_info> interfaces = get_all_interfaces();
     std::mutex discovery_mutex;
     std::condition_variable discovery_cv;
     bool found = false;
