@@ -23,32 +23,30 @@ void SystemAggregator::init() {
                 log_status.log_status == types::system::LogStatusEnum::Idle)
                 return;
 
-            // all others report status a final feedback (either error or success)
-            // that means that we can awake the waiters
-            // note: it might be possible that we already timed-out and the request_id
-            // is not valid anymore: in this case the following access create a default-constructed
-            // object with is_running = false - we can garbage collected it directly
-            // (other incoming log status updates will do the same)
+            // all others report a final status (either error or success), so they can wake the waiter
 
             // get the lock to access the map etc.
             std::unique_lock lock(this->lock_log_status);
+            auto request = this->log_uploads.find(log_status.request_id);
+            if (request == this->log_uploads.end()) {
+                EVLOG_debug << "System #" << i << ": ignoring status for unknown upload request.";
+                return;
+            }
 
-            this->log_uploads[log_status.request_id].feedback_count++;
+            if (!request->second.is_running) {
+                EVLOG_debug << "System #" << i << ": ignoring status for an upload being cancelled.";
+                return;
+            }
+
+            request->second.feedback_count++;
 
             // in case of negative feedback we can drop the expected filename
             if (log_status.log_status != types::system::LogStatusEnum::Uploaded) {
                 EVLOG_debug << "System #" << i << ": dropping filename due to reported error.";
-                this->log_uploads[log_status.request_id].incoming_filenames[i] = "";
+                request->second.incoming_filenames[i] = "";
             }
 
-            // remember whether we need to wakeup anybody
-            wakeup = this->log_uploads[log_status.request_id].is_running;
-
-            // if the upload is not running anymore, we can delete the object
-            if (!this->log_uploads[log_status.request_id].is_running) {
-                EVLOG_debug << "System #" << i << ": not running anymore, cleaning up.";
-                this->log_uploads.erase(log_status.request_id);
-            }
+            wakeup = true;
 
             // we should release the lock before notifying
             lock.unlock();

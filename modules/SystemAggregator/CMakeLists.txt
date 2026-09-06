@@ -21,6 +21,11 @@ target_include_directories(${MODULE_NAME}
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+target_link_libraries(${MODULE_NAME}
+    PRIVATE
+        everest::run_application
+)
 # ev@bcc62523-e22b-41d7-ba2f-825b493a3c97:v1
 
 target_sources(${MODULE_NAME}

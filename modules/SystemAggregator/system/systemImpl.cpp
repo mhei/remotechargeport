@@ -2,19 +2,21 @@
 // Copyright Michael Heimpold, chargebyte GmbH, Pionix GmbH and Contributors to EVerest
 
 #include "systemImpl.hpp"
+#include "../systemaggregator_upload_log_request.hpp"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
-#include <limits>
+#include <everest/run_application/run_application.hpp>
 #include <filesystem>
-#include <regex>
+#include <fmt/chrono.h>
+#include <limits>
+#include <memory>
 #include <random>
+#include <regex>
 #include <thread>
 #include <vector>
-#include <fmt/chrono.h>
-#include <boost/process.hpp>
-#include "../systemaggregator_upload_log_request.hpp"
 
 using namespace std::chrono_literals;
 
@@ -97,8 +99,13 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
     if (auto s = this->mod->type_to_log_uploads_map.find(type); s != this->mod->type_to_log_uploads_map.end()) {
         EVLOG_info << "Found existing upload request of type \"" << type << "\", so trying to cancel this one.";
 
-        // we need to use the store request id - not the one provide as parameter
-        this->mod->log_uploads[s->second].is_running = false;
+        // we need to use the stored request id - not the one provided as parameter
+        auto request = this->mod->log_uploads.find(s->second);
+        if (request != this->mod->log_uploads.end()) {
+            request->second.is_running = false;
+            request->second.stop_requested->store(true);
+            this->mod->cv_log_status.notify_all();
+        }
 
         types::system::UploadLogsResponse rv;
         rv.upload_logs_status = types::system::UploadLogsStatus::AcceptedCanceled;
@@ -154,8 +161,12 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
             rv.upload_logs_status = types::system::UploadLogsStatus::Rejected;
 
             this->mod->log_uploads[request_id].is_running = false;
+            this->mod->log_uploads[request_id].stop_requested->store(true);
+            this->mod->type_to_log_uploads_map.erase(type);
+            this->mod->log_uploads.erase(request_id);
 
-            EVLOG_info << "System #" << i << " reported " << status.upload_logs_status << ", so rejecting the original request.";
+            EVLOG_info << "System #" << i << " reported " << status.upload_logs_status
+                       << ", so rejecting the original request.";
 
             return rv;
         }
@@ -183,9 +194,18 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
         std::unique_lock<std::mutex> lock(this->mod->lock_log_status);
         std::filesystem::path incoming_basedir{this->mod->config.incoming_uploads_dir};
 
+        auto request = this->mod->log_uploads.find(request_id);
+        if (request == this->mod->log_uploads.end()) {
+            EVLOG_warning << "Upload request " << request_id << " disappeared before it could be processed.";
+            return;
+        }
+
+        auto stop_requested = request->second.stop_requested;
+
         bool upload_completed{false};
         std::chrono::seconds retry_interval{this->mod->config.default_retry_interval};
-        unsigned int max_retries{static_cast<unsigned int>(upload_logs_request.retries.value_or(this->mod->config.default_retries))};
+        unsigned int max_retries{
+            static_cast<unsigned int>(upload_logs_request.retries.value_or(this->mod->config.default_retries))};
         unsigned int retries{0};
 
         // we just inform the backend that we are "about to start" uploading to prevent backend timeouts
@@ -195,90 +215,91 @@ systemImpl::handle_upload_logs(types::system::UploadLogsRequest& upload_logs_req
 
         EVLOG_info << "Waiting for incoming status messages...";
 
-        if (!this->mod->cv_log_status.wait_for(lock,
-                                               upload_timeout,
-                                               [this, request_id]{
-                                                   bool got_feedback_from_all{this->mod->log_uploads[request_id].feedback_count == this->mod->r_system.size()};
-                                                   bool not_running_anymore = !this->mod->log_uploads[request_id].is_running;
-                                                   // we don't need to wait any longer if...
-                                                   return got_feedback_from_all or not_running_anymore;
-                                               })) {
-            if (!this->mod->log_uploads[request_id].is_running) {
-                EVLOG_info << "Request to cancel upload of type \"" << type << "\" received, so fulfilling.";
-                reported_status.log_status = types::system::LogStatusEnum::Idle;
-                this->publish_log_status(reported_status);
-                return;
-            }
+        const bool wait_completed =
+            this->mod->cv_log_status.wait_for(lock, upload_timeout, [this, request_id, stop_requested] {
+                auto request = this->mod->log_uploads.find(request_id);
+                return request == this->mod->log_uploads.end() || stop_requested->load() ||
+                       request->second.feedback_count == this->mod->r_system.size();
+            });
 
-            EVLOG_warning << "Not all systems managed to upload within our timeout of " << upload_timeout.count() << "s, proceeding nonetheless.";
+        if (!wait_completed) {
+            EVLOG_warning << "Not all systems managed to upload within our timeout of " << upload_timeout.count()
+                          << "s, proceeding nonetheless.";
+        } else if (stop_requested->load()) {
+            EVLOG_info << "Request to cancel upload of type \"" << type << "\" received, so fulfilling.";
+            reported_status.log_status = types::system::LogStatusEnum::Idle;
+            this->publish_log_status(reported_status);
         } else {
             EVLOG_info << "All systems uploaded, proceeding.";
         }
 
         // create cmdline parameters for our helper
         std::vector<std::string> args;
-        args.push_back(this->mod->log_uploads[request_id].filename);
+        args.push_back(request->second.filename);
         args.push_back(upload_logs_request.location);
-        for (auto& it : this->mod->log_uploads[request_id].incoming_filenames) {
+        std::vector<std::string> incoming_filenames;
+        for (const auto& it : request->second.incoming_filenames) {
             // if filename is not empty, include it in the parameters
-            if (it.second != "")
+            if (!it.second.empty()) {
                 args.push_back(it.second);
+                incoming_filenames.push_back(it.second);
+            }
         }
+        lock.unlock();
 
-        while (!upload_completed &&
-               retries <= max_retries &&
-               this->mod->log_uploads[request_id].is_running) {
+        while (!upload_completed && retries <= max_retries && !stop_requested->load()) {
             std::filesystem::path libexec_dir{this->mod->info.paths.libexec};
             auto fn_helper{libexec_dir / "logs_upload_helper.sh"};
-            std::string line;
             retries++;
 
-            boost::process::ipstream stream;
-            boost::process::child helper(fn_helper.string(), boost::process::args(args), boost::process::std_out > stream);
-
-            while (std::getline(stream, line) && this->mod->log_uploads[request_id].is_running) {
+            everest::run_application::RunOptions options;
+            options.accumulation = everest::run_application::RetainNone{};
+            options.stop_requested = stop_requested;
+            options.callback = [this, stop_requested, &reported_status](const std::string& line) {
                 if (line == "Uploaded") {
                     reported_status.log_status = types::system::string_to_log_status_enum(line);
                     this->publish_log_status(reported_status);
-                } else if (line == "UploadFailure" ||
-                           line == "PermissionDenied" ||
-                           line == "BadMessage" ||
+                } else if (line == "UploadFailure" || line == "PermissionDenied" || line == "BadMessage" ||
                            line == "NotSupportedOperation") {
                     reported_status.log_status = types::system::LogStatusEnum::UploadFailure;
                     this->publish_log_status(reported_status);
                 }
                 EVLOG_debug << "Upload helper said: " << line;
-            }
+                return stop_requested->load() ? everest::run_application::CmdControl::Terminate
+                                              : everest::run_application::CmdControl::Continue;
+            };
 
-            if (!this->mod->log_uploads[request_id].is_running) {
+            everest::run_application::run_application(fn_helper.string(), args, std::move(options));
+
+            if (stop_requested->load()) {
                 EVLOG_info << "While processing, request to cancel upload of type \"" << type << "\" received.";
-                helper.terminate();
-            } else if (reported_status.log_status != types::system::LogStatusEnum::Uploaded &&
-                       retries <= max_retries) {
-                std::this_thread::sleep_for(retry_interval);
+            } else if (reported_status.log_status != types::system::LogStatusEnum::Uploaded && retries <= max_retries) {
+                std::unique_lock<std::mutex> retry_lock(this->mod->lock_log_status);
+                this->mod->cv_log_status.wait_for(retry_lock, retry_interval,
+                                                  [stop_requested] { return stop_requested->load(); });
             } else {
                 upload_completed = true;
             }
-            helper.wait();
         }
 
         // cleanup the incoming files, our own generated tarball was already handled
-        for (auto& it : this->mod->log_uploads[request_id].incoming_filenames) {
-            // if filename is not empty, include it in the parameters
-            if (it.second != "") {
-                auto abs_fn{incoming_basedir / it.second};
+        for (const auto& filename : incoming_filenames) {
+            auto abs_fn{incoming_basedir / filename};
 
-                EVLOG_debug << "Removing file " << abs_fn;
-                std::filesystem::remove(abs_fn);
-            }
+            EVLOG_debug << "Removing file " << abs_fn;
+            std::filesystem::remove(abs_fn);
         }
 
         EVLOG_info << "Upload of type \"" << type << "\" finally processed.";
 
         // cleanup: first delete the map with the pointer, then the object pointed to
-        this->mod->type_to_log_uploads_map.erase(type);
+        std::scoped_lock cleanup_lock(this->mod->lock_log_status);
+        auto type_request = this->mod->type_to_log_uploads_map.find(type);
+        if (type_request != this->mod->type_to_log_uploads_map.end() && type_request->second == request_id) {
+            this->mod->type_to_log_uploads_map.erase(type_request);
+        }
         this->mod->log_uploads.erase(request_id);
-	}).detach();
+    }).detach();
 
     return {types::system::UploadLogsStatus::Accepted, this->mod->log_uploads[request_id].filename};
 }
