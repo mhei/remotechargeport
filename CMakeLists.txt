@@ -28,3 +28,5 @@ else()
 endif()
 
 ev_add_project()
+
+add_subdirectory(tools)
