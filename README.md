@@ -129,6 +129,14 @@ make
 
 You will find the binaries in the corresponding sub-directories of `modules`.
 
+The installed `satellite_find` helper performs a one-shot mDNS scan for running
+`SatelliteAgent` instances and prints one line per result:
+
+```bash
+satellite_find
+satellite_find --timeout-ms 5000
+```
+
 # Yocto Integration
 
 For [Yocto](https://www.yoctoproject.org/) builds, recipes and complementary files are maintained
