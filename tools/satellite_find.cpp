@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 
     std::vector<std::unique_ptr<mdns_client>> clients;
     try {
-        for (if_info const& interface : everest::lib::io::socket::get_all_interaces()) {
+        for (if_info const& interface : everest::lib::io::socket::get_all_interfaces()) {
             if (interface.ipv4.empty() || interface.ipv4.rfind("127.", 0) == 0 ||
                 interface.name.find("fallback") != std::string::npos) {
                 continue;
